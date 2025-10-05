@@ -3,462 +3,333 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Panel interactivo · Egresados FEIPU URosario</title>
-  <!-- Tailwind (CDN) para estilos rápidos en un solo archivo -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js para gráficos -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <!-- SheetJS para leer Excel desde GitHub -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
-
+  <title>Panel interactivo — Egresados FEIPU</title>
   <style>
-    /* Ajustes menores */
-    .card { @apply bg-white rounded-2xl shadow p-5; }
-    .kpi { @apply text-3xl font-semibold; }
-    .label { @apply text-sm text-gray-500; }
-    .chip { @apply inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs bg-gray-100; }
-    .table-header { @apply text-left text-xs font-medium text-gray-500 uppercase tracking-wider; }
-    .table-row { @apply hover:bg-gray-50; }
-    .btn { @apply inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium; }
-    .btn-primary { @apply bg-gray-900 text-white border-gray-900; }
-    .btn-ghost { @apply border-gray-300 text-gray-700; }
-    .select, .input { @apply rounded-xl border border-gray-300 px-3 py-2 text-sm; }
-    .tooltip { position: relative; cursor: help; }
-    .tooltip .tip { display:none; position:absolute; z-index:10; top:100%; left:0; margin-top:.25rem; @apply bg-gray-900 text-white text-xs rounded-lg px-2 py-1; white-space:nowrap; }
-    .tooltip:hover .tip { display:block; }
+    :root{
+      --bg:#0e0f12;--card:#16181d;--muted:#8b93a7;--text:#e9edf5;--accent:#6aa9ff;--accent2:#9b8cff;--ok:#4dd4ac;--warn:#ffcd57;--bad:#ff7d7d;
+    }
+    html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
+    .wrap{max-width:1200px;margin:28px auto;padding:0 16px}
+    h1{font-weight:750;letter-spacing:.2px;margin:0 0 6px}
+    .sub{color:var(--muted);margin:0 0 22px}
+    .grid{display:grid;gap:14px}
+    .g-4{grid-template-columns:repeat(4,1fr)}
+    .g-3{grid-template-columns:repeat(3,1fr)}
+    .g-2{grid-template-columns:repeat(2,1fr)}
+    @media(max-width:1100px){.g-4{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:720px){.g-4,.g-3,.g-2{grid-template-columns:1fr}}
+    .card{background:var(--card);border:1px solid #222630;border-radius:16px;padding:16px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+    .kpi{display:flex;align-items:baseline;gap:10px}
+    .kpi .n{font-size:28px;font-weight:800}
+    .kpi .l{color:var(--muted)}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:12px;border:1px solid #2a2f3b;background:#121419}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    select, input[type="text"], input[type="number"]{background:#0f1217;color:var(--text);border:1px solid #2a2f3b;border-radius:10px;padding:10px 12px;font-size:14px;min-width:160px}
+    select[multiple]{height:132px}
+    button{background:#1b2230;color:var(--text);border:1px solid #2b3446;border-radius:12px;padding:10px 14px;cursor:pointer}
+    button:hover{filter:brightness(1.15)}
+    .chart-card{display:grid;grid-template-rows:auto 1fr;min-height:360px}
+    .chart-ctn{position:relative;height:300px}
+    .table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    .table thead th{font-size:12px;color:var(--muted);text-align:left;padding:0 10px}
+    .tr{background:#0f1217;border:1px solid #262b36}
+    .tr td{padding:10px 10px;border-top:1px solid #262b36;border-bottom:1px solid #262b36}
+    .tr:first-child td{border-top-left-radius:12px;border-top-right-radius:12px}
+    .tr:last-child td{border-bottom-left-radius:12px;border-bottom-right-radius:12px}
+    .muted{color:var(--muted)}
+    .foot{display:flex;gap:10px;align-items:center;justify-content:flex-end;margin-top:8px}
+    .tag{display:inline-flex;padding:2px 8px;border-radius:999px;border:1px solid #2b3446;font-size:12px;color:var(--muted)}
+    .hint{font-size:12px;color:var(--muted);margin-top:6px}
+    .hl-otro{outline:2px dashed var(--warn);outline-offset:3px;border-radius:12px}
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
-  <header class="bg-white border-b">
-    <div class="max-w-7xl mx-auto px-4 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-      <div>
-        <h1 class="text-2xl font-bold">Panel de egresados · FEIPU URosario</h1>
-        <p class="text-gray-500 text-sm">Fuente: hoja <span class="font-mono">top3</span> del archivo Excel alojado en GitHub. Campos clave: <span class="font-mono">PROGRAMA</span>, <span class="font-mono">GRADO</span>, <span class="font-mono">Sector</span>, <span class="font-mono">Descripción</span>, <span class="font-mono">Top1_Categoria</span>, y opcionales <span class="font-mono">Cargo</span>, <span class="font-mono">Empresa</span>.</p>
+<body>
+  <div class="wrap">
+    <h1>Panel interactivo — Egresados FEIPU</h1>
+    <p class="sub">Clasificación temática (Top1_Categoria) derivada de bge-m3 (Ollama). Filtra, explora y descarga.</p>
+
+    <!-- Controles -->
+    <div class="grid g-4">
+      <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px">
+          <strong>Filtros</strong>
+          <button id="btn-clear">Limpiar</button>
+        </div>
+        <div class="grid g-2">
+          <div>
+            <label class="muted">Programa</label><br/>
+            <select id="f-programa" multiple></select>
+          </div>
+          <div>
+            <label class="muted">Sector</label><br/>
+            <select id="f-sector" multiple></select>
+          </div>
+          <div>
+            <label class="muted">Año de grado (min–max)</label><br/>
+            <div class="row">
+              <input id="f-min" type="number" placeholder="mín"/>
+              <input id="f-max" type="number" placeholder="máx"/>
+            </div>
+          </div>
+          <div>
+            <label class="muted">Tema (Top1_Categoria)</label><br/>
+            <select id="f-top1" multiple></select>
+            <div class="hint">Consejo: selecciona “Otro” para auditar casos ambiguos.</div>
+          </div>
+        </div>
       </div>
-      <div class="flex items-center gap-2">
-        <button id="btnReset" class="btn btn-ghost" title="Quitar todos los filtros">Reiniciar filtros</button>
-        <button id="btnExport" class="btn btn-primary" title="Descargar resultados filtrados a CSV">Exportar CSV</button>
+      <div class="card kpi"><span class="n" id="k-total">–</span><span class="l">Registros</span></div>
+      <div class="card kpi"><span class="n" id="k-cat">–</span><span class="l">Temas (Top1_Categoria)</span></div>
+      <div class="card kpi"><span class="n" id="k-otro">–</span><span class="l">% "Otro"</span></div>
+    </div>
+
+    <!-- Gráficas principales -->
+    <div class="grid g-2" style="margin-top:14px">
+      <div class="card chart-card" id="card-cats">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <strong>Distribución por tema (Top1_Categoria)</strong>
+          <span class="tag" id="tag-top">Top 12</span>
+        </div>
+        <div class="chart-ctn"><canvas id="chartCats"></canvas></div>
+        <div class="hint">Resalta\: “Otro” para control de calidad de la clasificación.</div>
+      </div>
+      <div class="card chart-card">
+        <strong>Temas × Sector (Top 8 temas)</strong>
+        <div class="chart-ctn"><canvas id="chartStack"></canvas></div>
       </div>
     </div>
-  </header>
 
-  <main class="max-w-7xl mx-auto p-4 space-y-6">
-    <!-- Carga de datos -->
-    <section class="card">
-      <div class="flex flex-col lg:flex-row gap-3 items-start lg:items-center justify-between">
-        <div class="space-y-1">
-          <div class="label">URL del Excel (GitHub raw):</div>
-          <input id="excelUrl" class="input w-[min(100%,42rem)]" placeholder="https://raw.githubusercontent.com/usuario/repositorio/rama/ruta/archivo.xlsx" />
-          <p class="text-xs text-gray-500">Sugerencia: usa la URL <span class="font-mono">raw.githubusercontent.com</span>. También puedes pasar <span class="font-mono">?data=URL</span> en la barra de direcciones.</p>
-        </div>
-        <div class="flex gap-2">
-          <button id="btnCargar" class="btn btn-primary">Cargar datos</button>
-          <span id="loadState" class="text-sm text-gray-500"></span>
-        </div>
+    <div class="grid g-2" style="margin-top:14px">
+      <div class="card chart-card">
+        <strong>Egresados por año de grado</strong>
+        <div class="chart-ctn"><canvas id="chartYear"></canvas></div>
       </div>
-    </section>
-
-    <!-- Filtros -->
-    <section class="card" id="filtros" style="display:none;">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div>
-          <div class="label">Programa</div>
-          <select id="fPROGRAMA" class="select w-full"></select>
-        </div>
-        <div>
-          <div class="label">Grado</div>
-          <select id="fGRADO" class="select w-full"></select>
-        </div>
-        <div>
-          <div class="label">Sector</div>
-          <select id="fSector" class="select w-full"></select>
-        </div>
-        <div>
-          <div class="label flex items-center gap-2">Top1_Categoria
-            <span class="tooltip">ℹ️
-              <span class="tip">«otro» indica sector distinto/no clasificable o información insuficiente.</span>
-            </span>
-          </div>
-          <select id="fTop1" class="select w-full"></select>
-        </div>
-        <div class="md:col-span-2">
-          <div class="label">Búsqueda libre en Descripción</div>
-          <input id="qDescripcion" class="input w-full" placeholder="palabra clave en Descripción…"/>
-        </div>
-        <div>
-          <div class="label">Empresa (texto libre)</div>
-          <input id="qEmpresa" class="input w-full" placeholder="contiene…"/>
-        </div>
-        <div>
-          <div class="label">Cargo (texto libre)</div>
-          <input id="qCargo" class="input w-full" placeholder="contiene…"/>
-        </div>
-        <div class="flex items-center gap-2">
-          <input id="chkExcluirOtro" type="checkbox" class="h-4 w-4" />
-          <label for="chkExcluirOtro" class="text-sm">Excluir «otro» en Top1_Categoria</label>
-        </div>
+      <div class="card chart-card">
+        <strong>Top temas por programa</strong>
+        <div class="chart-ctn"><canvas id="chartProg"></canvas></div>
       </div>
-    </section>
-
-    <!-- KPIs -->
-    <section class="grid grid-cols-1 md:grid-cols-3 gap-4" id="kpis" style="display:none;">
-      <div class="card">
-        <div class="label">Egresados (filtrados)</div>
-        <div id="kpiTotal" class="kpi">—</div>
-      </div>
-      <div class="card">
-        <div class="label">Programas (únicos)</div>
-        <div id="kpiProgramas" class="kpi">—</div>
-      </div>
-      <div class="card">
-        <div class="label">Categorías (Top1_Categoria)</div>
-        <div id="kpiCats" class="kpi">—</div>
-      </div>
-    </section>
-
-    <!-- Gráficos -->
-    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4" id="charts" style="display:none;">
-      <div class="card">
-        <div class="flex items-center justify-between">
-          <h2 class="font-semibold">Distribución por Top1_Categoria</h2>
-          <span id="top1Legend" class="text-xs text-gray-500"></span>
-        </div>
-        <canvas id="chartTop1" height="220"></canvas>
-      </div>
-      <div class="card">
-        <div class="flex items-center justify-between">
-          <h2 class="font-semibold">Distribución por Sector</h2>
-          <span id="sectorLegend" class="text-xs text-gray-500"></span>
-        </div>
-        <canvas id="chartSector" height="220"></canvas>
-      </div>
-    </section>
+    </div>
 
     <!-- Tabla -->
-    <section class="card" id="tablaWrap" style="display:none;">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="font-semibold">Registros</h2>
-        <div class="text-xs text-gray-500" id="resultInfo">—</div>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="table-header px-3 py-2">PROGRAMA</th>
-              <th class="table-header px-3 py-2">GRADO</th>
-              <th class="table-header px-3 py-2">Sector</th>
-              <th class="table-header px-3 py-2">Top1_Categoria</th>
-              <th class="table-header px-3 py-2">Descripción</th>
-              <th class="table-header px-3 py-2">Cargo</th>
-              <th class="table-header px-3 py-2">Empresa</th>
-            </tr>
-          </thead>
-          <tbody id="tbody" class="divide-y divide-gray-100 bg-white"></tbody>
-        </table>
-      </div>
-      <div class="flex items-center justify-between mt-4">
-        <div class="text-sm text-gray-500">Página <span id="pageNow">1</span> de <span id="pageTotal">1</span></div>
-        <div class="flex gap-2">
-          <button id="prevPage" class="btn btn-ghost">Anterior</button>
-          <select id="pageSize" class="select">
-            <option>10</option>
-            <option selected>25</option>
-            <option>50</option>
-            <option>100</option>
-          </select>
-          <button id="nextPage" class="btn btn-ghost">Siguiente</button>
+    <div class="card" style="margin-top:14px">
+      <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:6px">
+        <strong>Detalle de registros</strong>
+        <div class="row">
+          <input id="q" type="text" placeholder="Buscar en Cargo, Empresa o Descripción…" style="min-width:300px"/>
+          <button id="btn-csv">Descargar CSV</button>
         </div>
       </div>
-    </section>
+      <table class="table" id="tbl">
+        <thead>
+          <tr>
+            <th>PROGRAMA</th>
+            <th>GRADO</th>
+            <th>Sector</th>
+            <th>Top1_Categoria</th>
+            <th>Cargo</th>
+            <th>Empresa</th>
+            <th>Descripción</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="foot">
+        <span class="tag" id="pinfo">–</span>
+        <div class="row">
+          <button id="prev">‹</button>
+          <button id="next">›</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    <footer class="text-center text-xs text-gray-500 py-6">
-      Hecho en HTML único · Puedes versionarlo en GitHub sin dependencias de build. 
-    </footer>
-  </main>
+  <!-- Librerías desde CDN (permite un único HTML en GitHub Pages) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<script>
-  /********************************************
-   * Utilidades
-   ********************************************/
-  const SHEET_NAME = 'top3';
-  const COLS = {
-    PROGRAMA: 'PROGRAMA',
-    GRADO: 'GRADO',
-    Sector: 'Sector',
-    Descripcion: 'Descripción',
-    Top1: 'Top1_Categoria',
-    Cargo: 'Cargo',
-    Empresa: 'Empresa',
-  };
+  <!-- Datos embebidos como JSON en el propio HTML -->
+  <script type="application/json" id="raw-data"></script>
 
-  const qs = (s, el=document) => el.querySelector(s);
-  const qsa = (s, el=document) => Array.from(el.querySelectorAll(s));
+  <script>
+  // Inserta aquí el JSON (sustituido automáticamente al pegar este archivo desde ChatGPT)
+  const RAW_JSON = `[{"PROGRAMA":"RELACIONES INTERNACIONALES","GRADO":2011,"Sector":"Privado","Descripción":"Docente e Investigadora en la Escuela Intercultural de Diplomacia Indígena (EIDI) Universidad del Rosario.","Top1_Categoria":"Educación y academia","Cargo":"Docente e Investigadora en la Escuela Intercultural de Diplomacia Indígena (EIDI)","Empresa":"Universidad del Rosario"},{"PROGRAMA":"RELACIONES INTERNACIONALES","GRADO":2011,"Sector":"Privado","Descripción":"Director de inversiones segmento empresarial    .","Top1_Categoria":"Inversiones, financiero y seguros","Cargo":"Director de inversiones segmento empresarial    ","Empresa":""},{"PROGRAMA":"CIENCIA POLÍTICA Y GOBIERNO","GRADO":2005,"Sector":"Privado","Descripción":"Consultor estrategia ambiental, sostenibilidad, sociales, asuntos gubernamentales   .","Top1_Categoria":"Ambiente y agricultura","Cargo":"Consultor estrategia ambiental, sostenibilidad, sociales, asuntos gubernamentales   ","Empresa":""},{"PROGRAMA":"RELACIONES INTERNACIONALES","GRADO":2005,"Sector":"Privado","Descripción":"Consultor estrategia ambiental, sostenibilidad, sociales, asuntos gubernamentales   .","Top1_Categoria":"Ambiente y agricultura","Cargo":"Consultor estrategia ambiental, sostenibilidad, sociales, asuntos gubernamentales   ","Empresa":""},{"PROGRAMA":"RELACIONES INTERNACIONALES","GRADO":2018,"Sector":"Público","Descripción":"Asesor de Asuntos Culturales y Cooperación Internacional.    .","Top1_Categoria":"Relaciones internacionales y cooperación internacional","Cargo":"Asesor de Asuntos Culturales y Cooperación Internacional.    ","Empresa":"Misión diplomática."}]`;
+  document.getElementById('raw-data').textContent = RAW_JSON;
 
-  function deaccent(str){
-    if(!str) return '';
-    return str.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-  }
-  function unique(arr){ return Array.from(new Set(arr.filter(x=>x!=null && x!==''))).sort((a,b)=> String(a).localeCompare(String(b))); }
-  function countBy(arr, key){
-    const m = new Map();
-    for(const x of arr){ m.set(x, (m.get(x)||0)+1); }
-    return Array.from(m.entries()).sort((a,b)=> b[1]-a[1]);
-  }
-  function downloadText(filename, text){
-    const blob = new Blob([text], {type:'text/csv;charset=utf-8;'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename; a.click();
-    URL.revokeObjectURL(url);
-  }
+  const DATA = JSON.parse(document.getElementById('raw-data').textContent).map(r=>({
+    PROGRAMA: String(r.PROGRAMA||'').trim(),
+    GRADO: Number(r.GRADO)||null,
+    Sector: String(r.Sector||'').trim(),
+    Descripción: String(r.Descripción||''),
+    Top1_Categoria: String(r.Top1_Categoria||'').trim(),
+    Cargo: String(r.Cargo||''),
+    Empresa: String(r.Empresa||''),
+  }));
 
-  /********************************************
-   * Estado global
-   ********************************************/
-  let RAW = [];// datos completos
-  let VIEW = [];// datos filtrados
-  let PAGE = 1;
-  let PAGE_SIZE = 25;
-  let chartTop1, chartSector;
+  // Utilidades
+  const uniq = a => [...new Set(a)];
+  const sortByValDesc = obj => Object.entries(obj).sort((a,b)=>b[1]-a[1]);
+  const by = k => (a,b)=> (a[k]||'').localeCompare(b[k]||'');
+  function fmt(n){return n.toLocaleString('es-CO')}
 
-  /********************************************
-   * Carga del Excel
-   ********************************************/
-  async function fetchArrayBuffer(url){
-    const res = await fetch(url);
-    if(!res.ok) throw new Error('No se pudo descargar el Excel: '+res.status);
-    return await res.arrayBuffer();
-  }
+  // Estado de filtros
+  const S = {prog:[], sector:[], cats:[], min:null, max:null, q:'', page:1, size:20};
 
-  function readSheet(arrayBuffer){
-    const wb = XLSX.read(arrayBuffer, {type:'array'});
-    const sheet = wb.Sheets[SHEET_NAME] || wb.Sheets[wb.SheetNames[0]];
-    if(!sheet) throw new Error('No se encontró la hoja '+SHEET_NAME);
-    let rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
-    // Normalizar columnas esperadas
-    rows = rows.map(r=>({
-      [COLS.PROGRAMA]: r[COLS.PROGRAMA] ?? r['Programa'] ?? '',
-      [COLS.GRADO]: r[COLS.GRADO] ?? r['Grado'] ?? '',
-      [COLS.Sector]: r[COLS.Sector] ?? r['SECTOR'] ?? '',
-      [COLS.Descripcion]: r[COLS.Descripcion] ?? r['Descripcion'] ?? r['DESCRIPCION'] ?? r['DESCRIPCIÓN'] ?? '',
-      [COLS.Top1]: r[COLS.Top1] ?? r['Top1'] ?? r['TOP1_CATEGORIA'] ?? '',
-      [COLS.Cargo]: r[COLS.Cargo] ?? r['CARGO'] ?? '',
-      [COLS.Empresa]: r[COLS.Empresa] ?? r['EMPRESA'] ?? '',
-    }));
-    return rows;
-  }
+  // Poblar selects
+  const selProg = document.getElementById('f-programa');
+  const selSector = document.getElementById('f-sector');
+  const selTop = document.getElementById('f-top1');
+  const anos = uniq(DATA.map(d=>d.GRADO).filter(Boolean)).sort((a,b)=>a-b);
+  const minI = document.getElementById('f-min');
+  const maxI = document.getElementById('f-max');
+  const putOpts=(el,vals)=>{ el.innerHTML=''; vals.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o)}) }
+  putOpts(selProg, uniq(DATA.map(d=>d.PROGRAMA)).sort());
+  putOpts(selSector, uniq(DATA.map(d=>d.Sector)).sort());
+  putOpts(selTop, uniq(DATA.map(d=>d.Top1_Categoria)).sort());
+  minI.value=anos[0]||''; maxI.value=anos[anos.length-1]||'';
+  S.min=Number(minI.value)||null; S.max=Number(maxI.value)||null;
 
-  async function loadExcel(url){
-    setLoadState('Descargando…');
-    const buf = await fetchArrayBuffer(url);
-    setLoadState('Leyendo hoja…');
-    RAW = readSheet(buf);
-    setLoadState('Listo ('+RAW.length+' filas)');
-    initFilters(RAW);
-    PAGE = 1;
-    applyFilters();
-    qs('#filtros').style.display = '';
-    qs('#kpis').style.display = '';
-    qs('#charts').style.display = '';
-    qs('#tablaWrap').style.display = '';
-  }
+  // Lectura multi-select
+  function getMulti(el){ return [...el.selectedOptions].map(o=>o.value) }
 
-  function setLoadState(msg){ qs('#loadState').textContent = msg; }
-
-  /********************************************
-   * Filtros
-   ********************************************/
-  function fillSelect(sel, values){
-    sel.innerHTML = '';
-    const optAll = document.createElement('option');
-    optAll.value = ''; optAll.textContent = '— Todos —';
-    sel.appendChild(optAll);
-    for(const v of values){
-      const opt = document.createElement('option');
-      opt.value = v; opt.textContent = v || '(vacío)';
-      sel.appendChild(opt);
+  // Filtrado
+  function passes(d){
+    if(S.prog.length && !S.prog.includes(d.PROGRAMA)) return false;
+    if(S.sector.length && !S.sector.includes(d.Sector)) return false;
+    if(S.cats.length && !S.cats.includes(d.Top1_Categoria)) return false;
+    if(S.min && (d.GRADO??Infinity) < S.min) return false;
+    if(S.max && (d.GRADO??-Infinity) > S.max) return false;
+    if(S.q){
+      const q=S.q.toLowerCase();
+      const blob = (d.Cargo+" "+d.Empresa+" "+d.Descripción).toLowerCase();
+      if(!blob.includes(q)) return false;
     }
+    return true;
   }
+  function filtered(){ return DATA.filter(passes) }
 
-  function initFilters(data){
-    fillSelect(qs('#fPROGRAMA'), unique(data.map(d=>d[COLS.PROGRAMA])));
-    fillSelect(qs('#fGRADO'), unique(data.map(d=>d[COLS.GRADO])));
-    fillSelect(qs('#fSector'), unique(data.map(d=>d[COLS.Sector])));
-    fillSelect(qs('#fTop1'), unique(data.map(d=>d[COLS.Top1])));
-  }
+  // KPIs
+  const kTotal = document.getElementById('k-total');
+  const kCat = document.getElementById('k-cat');
+  const kOtro = document.getElementById('k-otro');
 
-  function applyFilters(){
-    const fProg = qs('#fPROGRAMA').value;
-    const fGrado = qs('#fGRADO').value;
-    const fSector = qs('#fSector').value;
-    const fTop1 = qs('#fTop1').value;
-    const qDesc = deaccent(qs('#qDescripcion').value);
-    const qEmp = deaccent(qs('#qEmpresa').value);
-    const qCargo = deaccent(qs('#qCargo').value);
-    const exclOtro = qs('#chkExcluirOtro').checked;
-
-    VIEW = RAW.filter(r=>{
-      if(fProg && r[COLS.PROGRAMA] !== fProg) return false;
-      if(fGrado && r[COLS.GRADO] !== fGrado) return false;
-      if(fSector && r[COLS.Sector] !== fSector) return false;
-      if(fTop1 && r[COLS.Top1] !== fTop1) return false;
-      if(exclOtro && (String(r[COLS.Top1]).toLowerCase().trim() === 'otro')) return false;
-      if(qDesc && !deaccent(String(r[COLS.Descripcion])).includes(qDesc)) return false;
-      if(qEmp && !deaccent(String(r[COLS.Empresa])).includes(qEmp)) return false;
-      if(qCargo && !deaccent(String(r[COLS.Cargo])).includes(qCargo)) return false;
-      return true;
+  // Tabla
+  const TB = document.getElementById('tbody');
+  const pinfo = document.getElementById('pinfo');
+  function renderTable(rows){
+    TB.innerHTML='';
+    const start=(S.page-1)*S.size, end=start+S.size;
+    const slice=rows.slice(start,end);
+    slice.forEach(d=>{
+      const tr=document.createElement('tr'); tr.className='tr'+(d.Top1_Categoria.toLowerCase()==='otro'?' hl-otro':'');
+      const cells=[d.PROGRAMA,d.GRADO??'',d.Sector,d.Top1_Categoria,d.Cargo,d.Empresa,d.Descripción];
+      cells.forEach(c=>{const td=document.createElement('td'); td.textContent=c; tr.appendChild(td)});
+      TB.appendChild(tr);
     });
-
-    updateKPIs();
-    updateCharts();
-    renderTable();
+    pinfo.textContent = `${slice.length?start+1:0}-${Math.min(end, rows.length)} de ${fmt(rows.length)}`;
   }
 
-  function resetFilters(){
-    qsa('select').forEach(s=> s.value='');
-    qsa('input').forEach(i=>{ if(i.type==='text') i.value=''; if(i.type==='checkbox') i.checked=false; });
-    PAGE = 1;
-    applyFilters();
+  // CSV
+  function toCSV(rows){
+    const cols=['PROGRAMA','GRADO','Sector','Top1_Categoria','Cargo','Empresa','Descripción'];
+    const head=cols.join(',');
+    const esc=v=>('"'+String(v).replace(/"/g,'""')+'"');
+    const body=rows.map(r=>cols.map(c=>esc(r[c]??'')).join(',')).join('\n');
+    return head+'\n'+body;
+  }
+  document.getElementById('btn-csv').onclick=()=>{
+    const blob=new Blob([toCSV(filtered())],{type:'text/csv;charset=utf-8;'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='egresados_filtrado.csv'; a.click();
   }
 
-  /********************************************
-   * KPIs y Gráficos
-   ********************************************/
-  function updateKPIs(){
-    qs('#kpiTotal').textContent = VIEW.length.toLocaleString('es-CO');
-    qs('#kpiProgramas').textContent = unique(VIEW.map(d=>d[COLS.PROGRAMA])).length;
-    qs('#kpiCats').textContent = unique(VIEW.map(d=>d[COLS.Top1])).length;
-  }
+  // Gráficas (Chart.js)
+  let cCats, cStack, cYear, cProg;
+  function destroy(c){ if(c){ c.destroy(); } }
 
-  function ensureChart(ctx, cfg, ref){
-    if(ref) { ref.destroy(); }
-    return new Chart(ctx, cfg);
-  }
-
-  function topNCount(arr, n=12){
-    const pairs = countBy(arr, x=>x);
-    const items = pairs.map(([k,v])=>({k,v}));
-    return items.slice(0,n);
-  }
-
-  function updateCharts(){
-    const catCounts = countBy(VIEW.map(d=>d[COLS.Top1]||'(vacío)'));
-    const secCounts = countBy(VIEW.map(d=>d[COLS.Sector]||'(vacío)'));
-
-    qs('#top1Legend').textContent = `${catCounts.length} categorías`;
-    qs('#sectorLegend').textContent = `${secCounts.length} sectores`;
-
-    const topCats = catCounts.slice(0,12);
-    const topSecs = secCounts.slice(0,12);
-
-    chartTop1 = ensureChart(qs('#chartTop1'), {
-      type: 'bar',
-      data: {
-        labels: topCats.map(d=>d[0]),
-        datasets: [{ label: 'Egresados', data: topCats.map(d=>d[1]) }]
-      },
-      options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { autoSkip: false } } } }
-    }, chartTop1);
-
-    chartSector = ensureChart(qs('#chartSector'), {
-      type: 'bar',
-      data: {
-        labels: topSecs.map(d=>d[0]),
-        datasets: [{ label: 'Egresados', data: topSecs.map(d=>d[1]) }]
-      },
-      options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { autoSkip: false } } } }
-    }, chartSector);
-  }
-
-  /********************************************
-   * Tabla
-   ********************************************/
-  function renderTable(){
-    const tbody = qs('#tbody');
-    tbody.innerHTML = '';
-    PAGE_SIZE = parseInt(qs('#pageSize').value,10);
-
-    const totalPages = Math.max(1, Math.ceil(VIEW.length / PAGE_SIZE));
-    PAGE = Math.min(PAGE, totalPages);
-    const start = (PAGE-1)*PAGE_SIZE;
-    const rows = VIEW.slice(start, start+PAGE_SIZE);
-
-    for(const r of rows){
-      const tr = document.createElement('tr');
-      tr.className = 'table-row';
-      tr.innerHTML = `
-        <td class="px-3 py-2 text-sm text-gray-800">${escapeHtml(r[COLS.PROGRAMA])}</td>
-        <td class="px-3 py-2 text-sm text-gray-800">${escapeHtml(r[COLS.GRADO])}</td>
-        <td class="px-3 py-2 text-sm text-gray-800">${escapeHtml(r[COLS.Sector])}</td>
-        <td class="px-3 py-2 text-sm">${badge(r[COLS.Top1])}</td>
-        <td class="px-3 py-2 text-sm text-gray-700">${escapeHtml(r[COLS.Descripcion])}</td>
-        <td class="px-3 py-2 text-sm text-gray-700">${escapeHtml(r[COLS.Cargo])}</td>
-        <td class="px-3 py-2 text-sm text-gray-700">${escapeHtml(r[COLS.Empresa])}</td>
-      `;
-      tbody.appendChild(tr);
+  function buildCharts(rows){
+    // 1) Distribución por tema (Top N)
+    const countCats={}; rows.forEach(r=>{ countCats[r.Top1_Categoria]=(countCats[r.Top1_Categoria]||0)+1 })
+    const topN = sortByValDesc(countCats).slice(0,12);
+    const labelsCats = topN.map(([k])=>k); const valsCats = topN.map(([,v])=>v);
+    destroy(cCats);
+    const ctx1=document.getElementById('chartCats');
+    cCats=new Chart(ctx1,{type:'bar',data:{labels:labelsCats,datasets:[{label:'Registros',data:valsCats}]},options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:(ctx)=>fmt(ctx.parsed.y)}}},
+      scales:{x:{ticks:{color:'#cfd5e2',maxRotation:45,minRotation:0}},y:{ticks:{color:'#cfd5e2',callback:(v)=>fmt(v)}}}
+    }});
+    // Resalta "Otro"
+    const idxOtro = labelsCats.findIndex(l=>l.toLowerCase()==='otro');
+    if(idxOtro>=0){
+      cCats.data.datasets[0].backgroundColor = labelsCats.map((l,i)=> i===idxOtro? 'rgba(255,205,87,0.7)':'rgba(106,169,255,0.6)');
+      cCats.update();
+      document.getElementById('card-cats').classList.add('hl-otro');
+    } else {
+      document.getElementById('card-cats').classList.remove('hl-otro');
     }
 
-    qs('#pageNow').textContent = PAGE;
-    qs('#pageTotal').textContent = Math.max(1, Math.ceil(VIEW.length / PAGE_SIZE));
-    qs('#resultInfo').textContent = `${VIEW.length.toLocaleString('es-CO')} resultados`;
-  }
+    // 2) Stacked Temas × Sector (Top 8 temas)
+    const top8 = sortByValDesc(countCats).slice(0,8).map(([k])=>k);
+    const sectors = uniq(rows.map(r=>r.Sector)).sort();
+    const byCatSec = (cat, sec)=> rows.filter(r=>r.Top1_Categoria===cat && r.Sector===sec).length;
+    const datasets = sectors.map(sec=>({label:sec,data:top8.map(cat=>byCatSec(cat,sec)),stack:'s'}));
+    destroy(cStack);
+    const ctx2=document.getElementById('chartStack');
+    cStack=new Chart(ctx2,{type:'bar',data:{labels:top8,datasets},options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{stacked:true,ticks:{color:'#cfd5e2'}},y:{stacked:true,ticks:{color:'#cfd5e2',callback:v=>fmt(v)}}},
+      plugins:{tooltip:{callbacks:{label:(ctx)=> `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`}}}
+    }});
 
-  function badge(v){
-    const txt = String(v||'(vacío)');
-    const isOtro = txt.trim().toLowerCase()==='otro';
-    return `<span class="chip ${isOtro ? 'bg-yellow-100' : 'bg-gray-100'}">${escapeHtml(txt)}</span>`;
-  }
+    // 3) Serie por año de grado
+    const byYear={}; rows.forEach(r=>{if(r.GRADO){byYear[r.GRADO]=(byYear[r.GRADO]||0)+1}});
+    const yLabels = Object.keys(byYear).map(n=>+n).sort((a,b)=>a-b);
+    const yVals = yLabels.map(y=>byYear[y]);
+    destroy(cYear);
+    const ctx3=document.getElementById('chartYear');
+    cYear=new Chart(ctx3,{type:'line',data:{labels:yLabels,datasets:[{label:'Registros',data:yVals,fill:false,tension:.25}]},options:{
+      responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#cfd5e2'}},y:{ticks:{color:'#cfd5e2',callback:v=>fmt(v)}}}
+    }});
 
-  function escapeHtml(s){
-    return String(s==null?'':s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-  }
-
-  /********************************************
-   * Exportar CSV de la vista
-   ********************************************/
-  function exportCSV(){
-    const header = ['PROGRAMA','GRADO','Sector','Top1_Categoria','Descripción','Cargo','Empresa'];
-    const lines = [header.join(',')];
-    for(const r of VIEW){
-      const row = [r[COLS.PROGRAMA], r[COLS.GRADO], r[COLS.Sector], r[COLS.Top1], r[COLS.Descripcion], r[COLS.Cargo], r[COLS.Empresa]]
-        .map(x=>`"${String(x??'').replaceAll('"','""')}"`)
-        .join(',');
-      lines.push(row);
-    }
-    downloadText('egresados_filtrados.csv', lines.join('\n'));
-  }
-
-  /********************************************
-   * Eventos UI
-   ********************************************/
-  function bindEvents(){
-    ['#fPROGRAMA','#fGRADO','#fSector','#fTop1','#qDescripcion','#qEmpresa','#qCargo','#chkExcluirOtro','#pageSize']
-      .forEach(id=> qs(id).addEventListener(id==='#pageSize' ? 'change' : (id.startsWith('#q')?'input':'change'), ()=>{ PAGE=1; applyFilters(); }));
-
-    qs('#prevPage').addEventListener('click', ()=>{ if(PAGE>1){ PAGE--; renderTable(); } });
-    qs('#nextPage').addEventListener('click', ()=>{ const total = Math.max(1, Math.ceil(VIEW.length / PAGE_SIZE)); if(PAGE<total){ PAGE++; renderTable(); } });
-    qs('#btnReset').addEventListener('click', resetFilters);
-    qs('#btnExport').addEventListener('click', exportCSV);
-    qs('#btnCargar').addEventListener('click', ()=>{
-      const url = qs('#excelUrl').value.trim();
-      if(!url){ alert('Indica la URL del Excel en GitHub (raw)'); return; }
-      loadExcel(url).catch(err=> setLoadState('Error: '+err.message));
+    // 4) Top temas por programa (apila los 6 más frecuentes por programa)
+    const progs = uniq(rows.map(r=>r.PROGRAMA)).sort();
+    const catsTop = uniq(sortByValDesc(countCats).slice(0,6).map(([k])=>k));
+    const matrix = catsTop.map(cat=>({label:cat, data: progs.map(p=> rows.filter(r=>r.PROGRAMA===p && r.Top1_Categoria===cat).length), stack:'x'}));
+    destroy(cProg);
+    const ctx4=document.getElementById('chartProg');
+    cProg=new Chart(ctx4,{type:'bar',data:{labels:progs,datasets:matrix},options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{stacked:true,ticks:{color:'#cfd5e2'}},y:{stacked:true,ticks:{color:'#cfd5e2',callback:v=>fmt(v)}}}}
     });
   }
 
-  // Lee ?data=URL si viene en la barra
-  function initFromQuery(){
-    try{
-      const u = new URL(window.location.href);
-      const dataUrl = u.searchParams.get('data');
-      if(dataUrl){ qs('#excelUrl').value = dataUrl; }
-    }catch(_){ /* no-op */ }
+  // Render general
+  function render(){
+    const rows = filtered();
+    // KPIs
+    kTotal.textContent = fmt(rows.length);
+    kCat.textContent = fmt(uniq(rows.map(r=>r.Top1_Categoria)).length);
+    const otro = rows.filter(r=>r.Top1_Categoria.toLowerCase()==='otro').length;
+    kOtro.textContent = rows.length? ((100*otro/rows.length).toFixed(1)+'%') : '0%';
+    // Tabla
+    S.page = 1; renderTable(rows);
+    // Charts
+    buildCharts(rows);
   }
 
-  document.addEventListener('DOMContentLoaded', ()=>{
-    bindEvents();
-    initFromQuery();
-  });
-</script>
+  // Eventos
+  selProg.onchange=()=>{S.prog=getMulti(selProg); render()}
+  selSector.onchange=()=>{S.sector=getMulti(selSector); render()}
+  selTop.onchange=()=>{S.cats=getMulti(selTop); render()}
+  minI.oninput=()=>{S.min=Number(minI.value)||null; render()}
+  maxI.oninput=()=>{S.max=Number(maxI.value)||null; render()}
+  document.getElementById('btn-clear').onclick=()=>{
+    [selProg,selSector,selTop].forEach(s=>{[...s.options].forEach(o=>o.selected=false)});
+    S.prog=[]; S.sector=[]; S.cats=[]; S.min=Number(anos[0])||null; S.max=Number(anos.at(-1))||null; minI.value=S.min||''; maxI.value=S.max||''; S.q=''; document.getElementById('q').value=''; render();
+  }
+  document.getElementById('q').oninput=(e)=>{S.q=e.target.value.trim(); render()}
+  document.getElementById('prev').onclick=()=>{ if(S.page>1){S.page--; renderTable(filtered())} }
+  document.getElementById('next').onclick=()=>{ const rows=filtered(); if(S.page*S.size<rows.length){S.page++; renderTable(rows)} }
+
+  // Inicio
+  render();
+  </script>
 </body>
 </html>
