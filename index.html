@@ -169,7 +169,7 @@ function detectColumns(rows){
   };
   const programa = find([/\bprograma\b/]);
   const grado    = find([/\bgrado\b/, /\baño.*grad/, /\baño.*egres/, /\baño\b/, /\byear\b/]);
-  const tema     = find([/\btema(?:\s+de)?\s+trabajo\b/, /\btema\b/]);
+  const tema     = find([/\bTop1_Categoria\b/, /\btema\b/]);
   return { programa, grado, tema };
 }
 
