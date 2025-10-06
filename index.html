@@ -91,6 +91,9 @@ const state = {
   cols: { programa: null, grado: null, tema: null },
   sheetName: null,
   fileName: null
+  categories: [],      // <-- NUEVO: todas las categorías globales
+  color: null          // <-- NUEVO: escala de color estable
+  
 };
 
 const el = {
@@ -251,7 +254,12 @@ function renderTreemap(){
   const data  = applyFilters();
   const total = data.length;
   const agg   = aggregateByTema(data);
-  const color = d3.scaleOrdinal(d3.schemeTableau10).domain(agg.map(d=>d.name));
+
+  
+  // === CAMBIO: usar la escala global estable ===
+  const color = state.color || d3.scaleOrdinal(d3.schemeTableau10).domain(
+    Array.from(new Set(state.cleaned.map(d => d["Tema de trabajo"]).filter(Boolean))).sort((a,b)=>a.localeCompare(b))
+  );
 
   drawLegend(agg.map(d=>d.name), color);
 
@@ -369,6 +377,14 @@ async function bootstrapFromRows(rows, sheet, fileName){
   state.cleaned = cleanRows(rows, cols);
   state.sheetName = sheet;
   state.fileName = fileName;
+
+  // === NUEVO: dominio global de categorías + escala estable ===
+  state.categories = Array.from(new Set(
+    state.cleaned.map(d => d["Tema de trabajo"]).filter(Boolean)
+  )).sort((a,b)=> a.localeCompare(b));
+  state.color = d3.scaleOrdinal(d3.schemeTableau10).domain(state.categories);
+  //=================================================================
+  
   el.fileMeta.textContent = `${fileName || 'archivo.xlsx'} · hoja: ${sheet}`;
   setStatus(`Registros válidos: ${state.cleaned.length}`);
   buildFilters();
