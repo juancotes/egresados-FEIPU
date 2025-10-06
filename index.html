@@ -14,73 +14,113 @@
   :root { --bg:#ffffff; --card:#f9fafb; --muted:#6b7280; --border:#e5e7eb; --ink:#111827; }
   * { box-sizing: border-box; }
   body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial; background:var(--bg); color:var(--ink); }
-  header { padding:16px 20px; background:#111827; color:#fff; }
-  h1 { font-size:18px; margin:0; }
+  header { padding:16px 20px; background:#111827; color:#fff; display:flex; align-items:center; gap:12px; }
+  h1 { font-size:18px; margin:0; line-height:1.2; }
   .sub { color:#cbd5e1; font-size:12px; margin-top:4px; }
   .wrap { display:grid; grid-template-columns: 360px 1fr; gap:16px; padding:16px; }
   .panel { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; }
   label { display:block; font-weight:600; margin:10px 0 6px; }
-  select, input[type="text"] { width:100%; padding:8px; border-radius:10px; border:1px solid #d1d5db; background:#fff; }
+  select, input[type="text"] { width:100%; padding:10px; border-radius:10px; border:1px solid #d1d5db; background:#fff; }
   .legend { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
-  .legend-item { display:flex; align-items:center; gap:6px; padding:2px 6px; border-radius:6px; background:#fff; border:1px solid var(--border); }
+  .legend-item { display:flex; align-items:center; gap:6px; padding:6px 8px; border-radius:8px; background:#fff; border:1px solid var(--border); }
   .legend-swatch { width:12px; height:12px; border-radius:3px; }
   #chart { width:100%; height:70vh; min-height:480px; border:1px solid var(--border); border-radius:12px; background:#fff; }
-  .tooltip { position: fixed; pointer-events:none; background:rgba(17,24,39,0.92); color:#fff; padding:8px 10px; border-radius:8px; font-size:12px; opacity:0; transition:opacity .12s; z-index:10; }
+  .tooltip { position: fixed; pointer-events:none; background:rgba(17,24,39,0.92); color:#fff; padding:10px 12px; border-radius:10px; font-size:12px; opacity:0; transition:opacity .12s; z-index:10; max-width:85vw; }
   .muted { color:var(--muted); }
   .small { font-size:12px; }
   .row { display:flex; gap:8px; }
   .about h2 { margin:0 0 6px; font-size:16px; }
   .about p { margin:6px 0; font-size:14px; line-height:1.4; }
+
+  /* ======== MODO MÓVIL (≤768px) SIN ROMPER ESCRITORIO ======== */
+  #toggleFilters {
+    display:none;
+    margin-left:auto;
+    background:#10b981; /* verde discreto */
+    color:#0b1b14;
+    border: none;
+    padding:8px 10px;
+    border-radius:10px;
+    font-weight:700;
+  }
+  @media (max-width: 768px) {
+    h1 { font-size:16px; }
+    .sub { font-size:11px; }
+    #toggleFilters { display:inline-block; }
+    .wrap {
+      grid-template-columns: 1fr; 
+      gap:12px; 
+      padding:12px;
+    }
+    /* Por defecto, en móvil mostramos SOLO el gráfico para aprovechar pantalla */
+    aside.panel { display:none; }
+    main.panel { display:block; }
+    body.show-filters aside.panel { display:block; }
+    body.show-filters main.panel { display:none; }
+
+    /* Mejorar altura del gráfico en móvil */
+    #chart { height:64vh; min-height:320px; }
+
+    /* Aumentar hit area en selects y entradas */
+    select, input[type="text"] { padding:12px; font-size:16px; } /* evita zoom iOS */
+    .legend-item { padding:8px 10px; }
+  }
+
+  /* Accesibilidad mínima foco */
+  :focus-visible {
+    outline: 2px solid #60a5fa; outline-offset: 2px;
+  }
 </style>
 </head>
 <body>
 <header>
-  <h1>🎓 ¿En qué trabajan los egresados de la FEIPU?</h1>
-  <div class="sub" id="fileMeta">Cargando datos…</div>
+  <div style="display:flex; flex-direction:column;">
+    <h1>🎓 ¿En qué trabajan los egresados de la FEIPU?</h1>
+    <div class="sub" id="fileMeta">Cargando datos…</div>
+  </div>
+  <!-- Botón solo visible en móvil para alternar Filtros <-> Gráfico -->
+  <button id="toggleFilters" aria-expanded="false" aria-controls="filters">Filtros</button>
 </header>
 
 <div class="wrap">
   <!-- Panel izquierdo: explicación + filtros -->
-  <aside class="panel">
+  <aside id="filters" class="panel">
     <section class="about">
       <h2>Acerca de esta visualización</h2>
       <p> Este es el resultado de un ejercicio de categorización llevado a cabo con un modelo bge-m3, bajo supervisión manual.
       Las categorías también fueron definidas manualmente. Puedes filtrar por <b>PROGRAMA</b> y <b>AÑO DE GRADO</b>. La categoría
-      'otro' indica que no hubo suficiente información para categorizar. Pasa el mouse para ver detalles.
-        
-      
-      </p>
+      'otro' indica que no hubo suficiente información para categorizar. Pasa el mouse o toca para ver detalles.</p>
       <p class="small muted"> Hecho por <a href="https://juancotes.github.io/Sebastian-Cotes-Ontibon/" target="_blank">Sebastián Cotes Ontibón</a>. Fuente: base de datos de egresados FEIPU anonimizada.</p>
       <div id="status" class="small muted" style="margin-top:6px;"></div>
     </section>
 
     <label for="programaSel">Filtrar por PROGRAMA</label>
-    <input id="programaFilter" type="text" placeholder="Buscar programa…" />
+    <input id="programaFilter" type="text" placeholder="Buscar programa…" inputmode="search" />
     <select id="programaSel" multiple size="8"></select>
 
     <label for="gradoSel">Filtrar por AÑO DE GRADO</label>
-    <div class="row">
+    <div class="row" style="align-items:flex-start;">
       <select id="gradoSel" multiple size="8" style="flex:1;"></select>
       <div style="display:flex;flex-direction:column;gap:6px;width:140px;">
-        <input id="minYear" type="text" placeholder="mín (e.g. 2015)" />
-        <input id="maxYear" type="text" placeholder="máx (e.g. 2025)" />
+        <input id="minYear" type="text" placeholder="mín (e.g. 2015)" inputmode="numeric" />
+        <input id="maxYear" type="text" placeholder="máx (e.g. 2025)" inputmode="numeric" />
       </div>
     </div>
 
     <div class="legend" id="legend"></div>
-    <div style="margin-top:10px;" class="muted small">Tip: usa Ctrl/⌘ o Shift para seleccionar varios; borra los campos de año para no filtrar por rango.</div>
+    <div style="margin-top:10px;" class="muted small">Tip: usa Ctrl/⌘ o Shift para seleccionar varios; en móvil puedes tocar para seleccionar uno y mantener para multiselección (según navegador).</div>
   </aside>
 
   <!-- Panel derecho: gráfico + detalles -->
   <main class="panel">
-    <div id="chart"></div>
+    <div id="chart" aria-label="Treemap por categoría"></div>
     <div id="details" class="details">
-      <div class="muted">Haz clic en un rectángulo para ver detalles.</div>
+      <div class="muted">Haz clic o toca un rectángulo para ver detalles.</div>
     </div>
   </main>
 </div>
 
-<div id="tooltip" class="tooltip"></div>
+<div id="tooltip" class="tooltip" role="tooltip" aria-hidden="true"></div>
 
 <script>
 /* ============================ CONFIG ============================ */
@@ -108,8 +148,18 @@ const el = {
   legend: document.getElementById('legend'),
   tooltip: document.getElementById('tooltip'),
   details: document.getElementById('details'),
+  toggleFilters: document.getElementById('toggleFilters'),
+  filters: document.getElementById('filters')
 };
 
+/* ======= UI: Alternar filtros en móvil sin afectar escritorio ======= */
+el.toggleFilters.addEventListener('click', () => {
+  const showing = document.body.classList.toggle('show-filters');
+  el.toggleFilters.setAttribute('aria-expanded', String(showing));
+  el.toggleFilters.textContent = showing ? 'Ver gráfico' : 'Filtros';
+});
+
+/* ======= Utilidades ======= */
 function setStatus(msg, isErr=false){
   el.status.textContent = msg;
   el.status.className = "small " + (isErr ? "err" : "muted");
@@ -211,34 +261,71 @@ function renderTreemap(){
   const g = svg.selectAll("g").data(root.leaves()).join("g")
     .attr("transform", d => `translate(${d.x0},${d.y0})`)
     .on("mousemove", (ev,d) => {
-      const pct = total ? ((d.data.value/total)*100).toFixed(1) : 0;
-      el.tooltip.style.opacity = 1;
-      el.tooltip.style.left = (ev.clientX+12)+"px";
-      el.tooltip.style.top  = (ev.clientY-12)+"px";
-      el.tooltip.innerHTML = `<b>${d.data.name}</b><br>Conteo: ${d.data.value}<br>% del total: ${pct}%`;
+      const {x,y} = getPointer(ev);
+      showTooltip(d, x, y, total);
     })
-    .on("mouseleave", () => el.tooltip.style.opacity = 0)
+    .on("mouseleave", () => hideTooltip())
     .on("click", (ev,d) => {
       const pct = total ? ((d.data.value/total)*100).toFixed(1) : 0;
       el.details.innerHTML = `<div><b>Categoría:</b> ${d.data.name}</div><div><b>Conteo:</b> ${d.data.value}</div><div><b>% del total:</b> ${pct}%</div>`;
-    });
+      // En móvil, al tocar mostramos el tooltip unos ms para feedback
+      if (isTouch()) {
+        const {x,y} = getPointer(ev);
+        showTooltip(d, x, y, total);
+        setTimeout(hideTooltip, 1200);
+      }
+    })
+    // Soporte táctil explícito
+    .on("touchstart", (ev,d) => {
+      const {x,y} = getPointer(ev);
+      showTooltip(d, x, y, total);
+    }, {passive:true})
+    .on("touchend", () => hideTooltip(), {passive:true});
 
   g.append("rect")
     .attr("width", d => Math.max(0, d.x1-d.x0))
     .attr("height", d => Math.max(0, d.y1-d.y0))
     .attr("fill", d => color(d.data.name))
-    .attr("rx",6).attr("ry",6);
+    .attr("rx",8).attr("ry",8);
 
   g.append("foreignObject")
     .attr("width", d => Math.max(0, d.x1-d.x0))
     .attr("height", d => Math.max(0, d.y1-d.y0))
     .append("xhtml:div")
     .style("width","100%").style("height","100%").style("display","flex").style("align-items","center").style("justify-content","center")
-    .style("text-align","center").style("padding","4px").style("font-size","12px").style("font-weight","600").style("color","#111827").style("pointer-events","none")
+    .style("text-align","center").style("padding","6px").style("font-size","12px").style("font-weight","600").style("color","#111827").style("pointer-events","none")
     .html(d => {
       const area=(d.x1-d.x0)*(d.y1-d.y0), pct = total?((d.data.value/total)*100).toFixed(1):0;
-      return area>5000 ? `${d.data.name} · ${pct}%` : "";
+      // Etiquetas menos exigentes en móvil para legibilidad
+      const threshold = window.matchMedia('(max-width: 768px)').matches ? 3500 : 5000;
+      return area>threshold ? `${d.data.name} · ${pct}%` : "";
     });
+}
+
+/* ---------- Tooltip helpers con soporte táctil y anti-overflow ---------- */
+function isTouch(){ return ('ontouchstart' in window) || navigator.maxTouchPoints > 0; }
+function getPointer(ev){
+  if (ev.touches && ev.touches[0]) return { x: ev.touches[0].clientX, y: ev.touches[0].clientY };
+  return { x: ev.clientX ?? 0, y: ev.clientY ?? 0 };
+}
+function showTooltip(d, clientX, clientY, total){
+  const pct = total ? ((d.data.value/total)*100).toFixed(1) : 0;
+  el.tooltip.innerHTML = `<b>${d.data.name}</b><br>Conteo: ${d.data.value}<br>% del total: ${pct}%`;
+  el.tooltip.style.opacity = 1;
+  // Evitar que se salga por el borde en móvil
+  const pad = 12;
+  const tw = el.tooltip.offsetWidth || 160;
+  const th = el.tooltip.offsetHeight || 60;
+  let left = clientX + pad, top = clientY - th - 8;
+  if (left + tw > window.innerWidth) left = window.innerWidth - tw - pad;
+  if (top < 0) top = clientY + pad;
+  el.tooltip.style.left = left + "px";
+  el.tooltip.style.top  = top  + "px";
+  el.tooltip.setAttribute('aria-hidden','false');
+}
+function hideTooltip(){
+  el.tooltip.style.opacity = 0;
+  el.tooltip.setAttribute('aria-hidden','true');
 }
 
 /* ---------- Carga de datos (solo automática; sin UI) ---------- */
@@ -299,11 +386,23 @@ el.programaFilter.addEventListener('input', () => {
 /* ---------- Auto-carga inicial ---------- */
 (async function init(){
   try{
-    // Se permite ?data=URL para despliegues, pero no se muestra UI para cambiarlo.
     const qs = new URL(location.href).searchParams.get("data");
     const url = (qs || DEFAULT_XLSX_URL).trim();
     const info = await loadFromUrl(url);
     await bootstrapFromRows(info.rows, info.sheet, info.fileName);
+
+    // Si se abre en móvil, mostrar primero el gráfico (filtros ocultos por defecto)
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      document.body.classList.remove('show-filters');
+      el.toggleFilters.setAttribute('aria-expanded','false');
+      el.toggleFilters.textContent = 'Filtros';
+    }
+    // Re-render on resize para recalcular treemap
+    let rid = null;
+    window.addEventListener('resize', () => {
+      cancelAnimationFrame(rid);
+      rid = requestAnimationFrame(renderTreemap);
+    });
   }catch(e){ setStatus(`Error: ${e.message}`, true); }
 })();
 </script>
