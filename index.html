@@ -3,52 +3,55 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Treemap – Tema de trabajo (Egresados)</title>
+<title>🎓 ¿En qué trabajan los egresados de la FEIPU?</title>
 
 <!-- D3 v7 -->
 <script src="https://d3js.org/d3.v7.min.js"></script>
-<!-- SheetJS (XLSX parser) -->
+<!-- SheetJS -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
   :root { --bg:#ffffff; --card:#f9fafb; --muted:#6b7280; --border:#e5e7eb; --ink:#111827; }
   * { box-sizing: border-box; }
   body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial; background:var(--bg); color:var(--ink); }
-  header { padding: 16px 20px; background: #111827; color: #fff; }
-  h1 { font-size: 18px; margin: 0; }
+  header { padding:16px 20px; background:#111827; color:#fff; }
+  h1 { font-size:18px; margin:0; }
   .sub { color:#cbd5e1; font-size:12px; margin-top:4px; }
-  .wrap { display:grid; grid-template-columns: 320px 1fr; gap:16px; padding:16px; }
+  .wrap { display:grid; grid-template-columns: 360px 1fr; gap:16px; padding:16px; }
   .panel { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; }
   label { display:block; font-weight:600; margin:10px 0 6px; }
-  select, button, input[type="text"], input[type="file"] { width:100%; padding:8px; border-radius:10px; border:1px solid #d1d5db; background:#fff; }
-  .actions { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
-  .legend { display:flex; flex-wrap: wrap; gap:6px; margin-top:10px; }
+  select, input[type="text"] { width:100%; padding:8px; border-radius:10px; border:1px solid #d1d5db; background:#fff; }
+  .legend { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
   .legend-item { display:flex; align-items:center; gap:6px; padding:2px 6px; border-radius:6px; background:#fff; border:1px solid var(--border); }
   .legend-swatch { width:12px; height:12px; border-radius:3px; }
   #chart { width:100%; height:70vh; min-height:480px; border:1px solid var(--border); border-radius:12px; background:#fff; }
-  .tooltip { position: fixed; pointer-events:none; background:rgba(17,24,39,0.92); color:#fff; padding:8px 10px; border-radius:8px; font-size:12px; opacity:0; transition:opacity .12s; z-index: 10; }
+  .tooltip { position: fixed; pointer-events:none; background:rgba(17,24,39,0.92); color:#fff; padding:8px 10px; border-radius:8px; font-size:12px; opacity:0; transition:opacity .12s; z-index:10; }
   .muted { color:var(--muted); }
-  .details { font-size:14px; line-height:1.35; margin-top:10px; }
   .small { font-size:12px; }
-  .err { color:#b91c1c; font-weight:600; }
   .row { display:flex; gap:8px; }
+  .about h2 { margin:0 0 6px; font-size:16px; }
+  .about p { margin:6px 0; font-size:14px; line-height:1.4; }
 </style>
 </head>
 <body>
 <header>
-  <h1>🎓¿En qué trabajan los egresados de la FEIPU?</h1>
-  <div class="sub" id="fileMeta">Carga un Excel por URL (Raw) o súbelo local.</div>
+  <h1>🎓 ¿En qué trabajan los egresados de la FEIPU?</h1>
+  <div class="sub" id="fileMeta">Cargando datos…</div>
 </header>
 
 <div class="wrap">
+  <!-- Panel izquierdo: explicación + filtros -->
   <aside class="panel">
-    <label>Fuente de datos (.xlsx) vía URL (Raw GitHub u otro hosting con CORS)</label>
-    <input id="xlsxUrl" type="text" placeholder="https://raw.githubusercontent.com/…/Egresados%20FEIPU.xlsx" />
-    <div class="actions">
-      <button id="btnLoad">Cargar URL</button>
-      <input id="fileInput" type="file" accept=".xlsx" />
-    </div>
-    <div id="status" class="small muted" style="margin-top:6px;"></div>
+    <section class="about">
+      <h2>Acerca de esta visualización</h2>
+      <p> Este es el resultado de un ejercicio de categorización llevado a cabo con el modelo bge-m3, bajo supervisión manual.
+      Puedes filtrar por <b>PROGRAMA</b> y <b>AÑO DE GRADO</b>. Pasa el mouse para ver detalles y
+      haz clic en cualquier rectángulo para fijarlos aquí.
+      Hecho por <a href="https://juancotes.github.io/Sebastian-Cotes-Ontibon/" target="_blank">Sebastián Cotes Ontibón</a> . 
+      </p>
+      <p class="small muted">Fuente: archivo Excel público de la FEIPU. Los colores de categoría se mantienen estables entre filtros.</p>
+      <div id="status" class="small muted" style="margin-top:6px;"></div>
+    </section>
 
     <label for="programaSel">Filtrar por PROGRAMA</label>
     <input id="programaFilter" type="text" placeholder="Buscar programa…" />
@@ -63,14 +66,11 @@
       </div>
     </div>
 
-    <div class="actions">
-      <button id="limpiar">Limpiar</button>
-    </div>
-
     <div class="legend" id="legend"></div>
-    <div style="margin-top:10px;" class="muted small">Tip: usa Ctrl/⌘ o Shift para seleccionar varios.</div>
+    <div style="margin-top:10px;" class="muted small">Tip: usa Ctrl/⌘ o Shift para seleccionar varios; borra los campos de año para no filtrar por rango.</div>
   </aside>
 
+  <!-- Panel derecho: gráfico + detalles -->
   <main class="panel">
     <div id="chart"></div>
     <div id="details" class="details">
@@ -91,23 +91,18 @@ const state = {
   cols: { programa: null, grado: null, tema: null },
   sheetName: null,
   fileName: null,
-  categories: [],      // <-- NUEVO: todas las categorías globales
-  color: null          // <-- NUEVO: escala de color estable
-  
+  categories: [],
+  color: null
 };
 
 const el = {
   fileMeta: document.getElementById('fileMeta'),
   status: document.getElementById('status'),
-  xlsxUrl: document.getElementById('xlsxUrl'),
-  btnLoad: document.getElementById('btnLoad'),
-  fileInput: document.getElementById('fileInput'),
   programaFilter: document.getElementById('programaFilter'),
   programaSel: document.getElementById('programaSel'),
   gradoSel: document.getElementById('gradoSel'),
   minYear: document.getElementById('minYear'),
   maxYear: document.getElementById('maxYear'),
-  limpiar: document.getElementById('limpiar'),
   chart: document.getElementById('chart'),
   legend: document.getElementById('legend'),
   tooltip: document.getElementById('tooltip'),
@@ -118,64 +113,28 @@ function setStatus(msg, isErr=false){
   el.status.textContent = msg;
   el.status.className = "small " + (isErr ? "err" : "muted");
 }
-
 function normalize(s){ return String(s ?? "").trim().toLowerCase().replace(/\s+/g,' '); }
-
 function extractYear(v){
   if (v == null || v === "") return null;
   const n = Number(v);
-  if (!Number.isNaN(n)) {
-    const y = Math.round(n);
-    if (y >= 1950 && y <= 2100) return y;
-  }
-  const s = String(v);
-  const m = s.match(/(19|20)\d{2}/);
-  if (m) {
-    const y = Number(m[0]);
-    if (y >= 1950 && y <= 2100) return y;
-  }
-  const d = new Date(s);
-  if (!isNaN(d.getTime())) {
-    const y = d.getFullYear();
-    if (y >= 1950 && y <= 2100) return y;
-  }
+  if (!Number.isNaN(n)) { const y = Math.round(n); if (y>=1950 && y<=2100) return y; }
+  const s = String(v); const m = s.match(/(19|20)\d{2}/);
+  if (m){ const y = Number(m[0]); if (y>=1950 && y<=2100) return y; }
+  const d = new Date(s); if (!isNaN(d.getTime())) { const y = d.getFullYear(); if (y>=1950 && y<=2100) return y; }
   return null;
 }
-
-function normalizeGithubUrl(u){
-  try {
-    const url = new URL(u);
-    if (url.hostname === 'github.com' && url.pathname.includes('/blob/')) {
-      const parts = url.pathname.split('/').filter(Boolean);
-      const user  = parts[0], repo = parts[1], branch = parts[3];
-      const rest  = parts.slice(4).join('/');
-      return `https://raw.githubusercontent.com/${user}/${repo}/${branch}/${rest}`;
-    }
-    return u;
-  } catch { return u; }
-}
-
 function detectColumns(rows){
   if (!rows.length) throw new Error("La hoja no tiene registros.");
   const cols = Object.keys(rows[0] ?? {});
   const byNorm = new Map(cols.map(c => [normalize(c), c]));
-  const find = (patterns) => {
-    for (const p of patterns){
-      for (const [nk, orig] of byNorm.entries()){
-        if (p.test(nk)) return orig;
-      }
-    }
-    return null;
-  };
+  const find = (patterns) => { for (const p of patterns){ for (const [nk, orig] of byNorm.entries()){ if (p.test(nk)) return orig; } } return null; };
   const programa = find([/\bprograma\b/]);
   const grado    = find([/\bgrado\b/, /\baño.*grad/, /\baño.*egres/, /\baño\b/, /\byear\b/]);
   const tema     = find([/\btop1_categoria\b/, /\btema(?:\s+de)?\s+trabajo\b/, /\btema\b/]);
   return { programa, grado, tema };
 }
-
 function cleanRows(rows, cols){
-  const out = [];
-  const counts = new Map();
+  const out = [], counts = new Map();
   const tmp = rows.map(r => {
     const temaRaw = r[cols.tema];
     const temaStr = (temaRaw==null?"":String(temaRaw).trim());
@@ -194,54 +153,36 @@ function cleanRows(rows, cols){
   }
   return out;
 }
-
 function uniq(arr){ return Array.from(new Set(arr.filter(v => v!=null))); }
 
-function fillSelect(sel, options){
-  sel.innerHTML = "";
-  for (const o of options){
-    const opt = document.createElement('option');
-    opt.value = o;
-    opt.textContent = String(o);
-    sel.appendChild(opt);
-  }
-}
+function fillSelect(sel, options){ sel.innerHTML = ""; for (const o of options){ const opt=document.createElement('option'); opt.value=o; opt.textContent=String(o); sel.appendChild(opt);} }
 
 function buildFilters(){
   const programas = uniq(state.cleaned.map(d => d.PROGRAMA)).sort((a,b)=>(a||"").localeCompare(b||""));
   const years     = uniq(state.cleaned.map(d => d.GRADO)).sort((a,b)=>(a??0)-(b??0));
   fillSelect(el.programaSel, programas);
   fillSelect(el.gradoSel, years);
-  // NO imponemos rango si está vacío
   el.minYear.value = years.length ? years[0] : "";
   el.maxYear.value = years.length ? years[years.length-1] : "";
 }
-
 function getSelected(sel){ return Array.from(sel.selectedOptions).map(o => o.value); }
-
 function applyFilters(){
-  const selProg = getSelected(el.programaSel);                 // strings
-  const selGrad = getSelected(el.gradoSel).map(v => Number(v)); // números
-  const minY    = Number(el.minYear.value);
-  const maxY    = Number(el.maxYear.value);
-  const useRange = Number.isFinite(minY) || Number.isFinite(maxY); // solo si escribiste algo
-
+  const selProg = getSelected(el.programaSel);
+  const selGrad = getSelected(el.gradoSel).map(v => Number(v));
+  const minY = Number(el.minYear.value), maxY = Number(el.maxYear.value);
+  const useRange = Number.isFinite(minY) || Number.isFinite(maxY);
   return state.cleaned.filter(d => {
     const okProg = selProg.length ? selProg.includes(d.PROGRAMA) : true;
     const okGradList = selGrad.length ? selGrad.includes(d.GRADO) : true;
-    const okRange = useRange
-      ? (d.GRADO!=null && (!Number.isFinite(minY) || d.GRADO>=minY) && (!Number.isFinite(maxY) || d.GRADO<=maxY))
-      : true;
+    const okRange = useRange ? (d.GRADO!=null && (!Number.isFinite(minY)||d.GRADO>=minY) && (!Number.isFinite(maxY)||d.GRADO<=maxY)) : true;
     return okProg && okGradList && okRange;
   });
 }
-
 function aggregateByTema(data){
   const m = new Map();
-  for (const r of data){ m.set(r["Top1_Categoria"] || "—", (m.get(r["Top1_Categoria"] || "—")||0)+1); }
+  for (const r of data){ const k = r["Top1_Categoria"] || "—"; m.set(k, (m.get(k)||0)+1); }
   return Array.from(m, ([name,value]) => ({name,value})).sort((a,b)=>b.value-a.value);
 }
-
 function drawLegend(categories, color){
   const sel = d3.select(el.legend).selectAll(".legend-item").data(categories, d=>d);
   sel.exit().remove();
@@ -249,39 +190,26 @@ function drawLegend(categories, color){
   enter.append("div").attr("class","legend-swatch").style("background", d => color(d));
   enter.append("div").text(d => d);
 }
-
 function renderTreemap(){
-  const data  = applyFilters();
+  const data = applyFilters();
   const total = data.length;
-  const agg   = aggregateByTema(data);
-
-  
-  // === CAMBIO: usar la escala global estable ===
+  const agg = aggregateByTema(data);
   const color = state.color || d3.scaleOrdinal(d3.schemeTableau10).domain(
     Array.from(new Set(state.cleaned.map(d => d["Top1_Categoria"]).filter(Boolean))).sort((a,b)=>a.localeCompare(b))
   );
-
   drawLegend(agg.map(d=>d.name), color);
 
   el.chart.innerHTML = "";
-  const width  = el.chart.clientWidth;
-  const height = el.chart.clientHeight;
+  const width = el.chart.clientWidth, height = el.chart.clientHeight;
 
-  const root = d3.hierarchy({ name:"root", children: agg })
-    .sum(d => d.value)
-    .sort((a,b)=> b.value - a.value);
+  const root = d3.hierarchy({ name:"root", children: agg }).sum(d=>d.value).sort((a,b)=>b.value-a.value);
+  d3.treemap().size([width,height]).paddingInner(2).round(true)(root);
 
-  d3.treemap().size([width, height]).paddingInner(2).round(true)(root);
+  const svg = d3.select("#chart").append("svg").attr("width",width).attr("height",height);
 
-  const svg = d3.select("#chart").append("svg")
-    .attr("width", width)
-    .attr("height", height);
-
-  const g = svg.selectAll("g")
-    .data(root.leaves())
-    .join("g")
+  const g = svg.selectAll("g").data(root.leaves()).join("g")
     .attr("transform", d => `translate(${d.x0},${d.y0})`)
-    .on("mousemove", (ev, d) => {
+    .on("mousemove", (ev,d) => {
       const pct = total ? ((d.data.value/total)*100).toFixed(1) : 0;
       el.tooltip.style.opacity = 1;
       el.tooltip.style.left = (ev.clientX+12)+"px";
@@ -289,63 +217,46 @@ function renderTreemap(){
       el.tooltip.innerHTML = `<b>${d.data.name}</b><br>Conteo: ${d.data.value}<br>% del total: ${pct}%`;
     })
     .on("mouseleave", () => el.tooltip.style.opacity = 0)
-    .on("click", (ev, d) => {
+    .on("click", (ev,d) => {
       const pct = total ? ((d.data.value/total)*100).toFixed(1) : 0;
-      el.details.innerHTML = `
-        <div><b>Categoría:</b> ${d.data.name}</div>
-        <div><b>Conteo:</b> ${d.data.value}</div>
-        <div><b>% del total:</b> ${pct}%</div>
-      `;
+      el.details.innerHTML = `<div><b>Categoría:</b> ${d.data.name}</div><div><b>Conteo:</b> ${d.data.value}</div><div><b>% del total:</b> ${pct}%</div>`;
     });
 
   g.append("rect")
-    .attr("width", d => Math.max(0, d.x1 - d.x0))
-    .attr("height", d => Math.max(0, d.y1 - d.y0))
+    .attr("width", d => Math.max(0, d.x1-d.x0))
+    .attr("height", d => Math.max(0, d.y1-d.y0))
     .attr("fill", d => color(d.data.name))
     .attr("rx",6).attr("ry",6);
 
   g.append("foreignObject")
-    .attr("width", d => Math.max(0, d.x1 - d.x0))
-    .attr("height", d => Math.max(0, d.y1 - d.y0))
+    .attr("width", d => Math.max(0, d.x1-d.x0))
+    .attr("height", d => Math.max(0, d.y1-d.y0))
     .append("xhtml:div")
-    .style("width","100%").style("height","100%")
-    .style("display","flex").style("align-items","center").style("justify-content","center")
-    .style("text-align","center").style("padding","4px")
-    .style("font-size","12px").style("font-weight","600").style("color","#111827")
-    .style("pointer-events","none")
+    .style("width","100%").style("height","100%").style("display","flex").style("align-items","center").style("justify-content","center")
+    .style("text-align","center").style("padding","4px").style("font-size","12px").style("font-weight","600").style("color","#111827").style("pointer-events","none")
     .html(d => {
-      const area = (d.x1 - d.x0) * (d.y1 - d.y0);
-      const pct = total ? ((d.data.value/total)*100).toFixed(1) : 0;
-      return area > 5000 ? `${d.data.name} · ${pct}%` : "";
+      const area=(d.x1-d.x0)*(d.y1-d.y0), pct = total?((d.data.value/total)*100).toFixed(1):0;
+      return area>5000 ? `${d.data.name} · ${pct}%` : "";
     });
 }
 
-/* ---------- Carga de datos ---------- */
+/* ---------- Carga de datos (solo automática; sin UI) ---------- */
 function pickBestSheet(workbook){
   let best = { name:null, score:-1 };
   workbook.SheetNames.forEach(name => {
     const ws = workbook.Sheets[name];
     const json = XLSX.utils.sheet_to_json(ws, {defval: null});
     if (!json.length) return;
-    const cols = Object.keys(json[0] ?? {});
-    const nc = cols.map(c => normalize(c));
-
-    const hasTema = nc.some(c =>
-      c === "top1_categoria" ||
-      (c.includes("tema") && c.includes("trabajo")) ||
-      c === "tema de trabajo" || c === "temas de trabajo"
-    );
-
+    const cols = Object.keys(json[0] ?? {}), nc = cols.map(c => normalize(c));
+    const hasTema = nc.some(c => c==="top1_categoria" || (c.includes("tema") && c.includes("trabajo")) || c==="tema de trabajo" || c==="temas de trabajo");
     const hasProg = nc.some(c => c.includes("programa"));
-    const hasGrad = nc.some(c => c.includes("grado") || (c.includes("año") && (c.includes("grad") || c.includes("egres"))) || c === "year");
+    const hasGrad = nc.some(c => c.includes("grado") || (c.includes("año") && (c.includes("grad")||c.includes("egres"))) || c==="year");
     const score = (hasTema?1:0) + (hasProg?1:0) + (hasGrad?1:0) + Math.min(cols.length,6)*0.05;
     if (score > best.score) best = { name, score };
   });
   return best.name || workbook.SheetNames[0];
 }
-
 async function loadFromUrl(url){
-  url = normalizeGithubUrl(url);
   setStatus("Descargando Excel…");
   const res = await fetch(url);
   if (!res.ok) throw new Error(`No se pudo descargar el archivo (${res.status})`);
@@ -357,98 +268,42 @@ async function loadFromUrl(url){
   const rows = XLSX.utils.sheet_to_json(ws, { defval: null });
   return { rows, sheet, fileName: url.split("/").pop() };
 }
-
-function loadFromFile(file){
-  return new Promise((resolve, reject) => {
-    const fr = new FileReader();
-    fr.onload = () => {
-      try {
-        const data = new Uint8Array(fr.result);
-        const wb = XLSX.read(data, { type: "array" });
-        const sheet = pickBestSheet(wb);
-        const ws = wb.Sheets[sheet];
-        const rows = XLSX.utils.sheet_to_json(ws, { defval: null });
-        resolve({ rows, sheet, fileName: file.name });
-      } catch(e){ reject(e); }
-    };
-    fr.onerror = () => reject(fr.error);
-    fr.readAsArrayBuffer(file);
-  });
-}
-
 async function bootstrapFromRows(rows, sheet, fileName){
   const cols = detectColumns(rows);
-  if (!cols.tema) throw new Error("No encontré la columna 'Top1_Categoria' (o 'Tema de trabajo'). Revisa encabezados.");
+  if (!cols.tema) throw new Error("No encontré la columna 'Top1_Categoria' (o 'Tema de trabajo').");
   state.cols = cols;
   state.cleaned = cleanRows(rows, cols);
   state.sheetName = sheet;
   state.fileName = fileName;
-
-  // === NUEVO: dominio global de categorías + escala estable ===
-  state.categories = Array.from(new Set(
-    state.cleaned.map(d => d["Top1_Categoria"]).filter(Boolean)
-  )).sort((a,b)=> a.localeCompare(b));
+  state.categories = Array.from(new Set(state.cleaned.map(d => d["Top1_Categoria"]).filter(Boolean))).sort((a,b)=>a.localeCompare(b));
   state.color = d3.scaleOrdinal(d3.schemeTableau10).domain(state.categories);
-  //=================================================================
-  
   el.fileMeta.textContent = `${fileName || 'archivo.xlsx'} · hoja: ${sheet}`;
   setStatus(`Registros válidos: ${state.cleaned.length}`);
   buildFilters();
   renderTreemap();
 }
 
-/* ---------- Eventos UI ---------- */
-document.getElementById('btnLoad').addEventListener('click', async () => {
-  try {
-    const url = (el.xlsxUrl.value || DEFAULT_XLSX_URL || "").trim();
-    if (!url) { setStatus("Ingresa una URL .xlsx válida (Raw).", true); return; }
-    const info = await loadFromUrl(url);
-    await bootstrapFromRows(info.rows, info.sheet, info.fileName);
-  } catch(err){ console.error(err); setStatus(`Error: ${err.message}`, true); }
-});
-
-document.getElementById('fileInput').addEventListener('change', async (e) => {
-  const file = e.target.files?.[0]; if (!file) return;
-  try {
-    const info = await loadFromFile(file);
-    await bootstrapFromRows(info.rows, info.sheet, info.fileName);
-  } catch(err){ console.error(err); setStatus(`Error: ${err.message}`, true); }
-});
-
-/* Reactividad: re-render automático al cambiar filtros */
-el.programaSel.addEventListener('change', renderTreemap);
-el.gradoSel.addEventListener('change', renderTreemap);
-el.minYear.addEventListener('input', renderTreemap);
-el.maxYear.addEventListener('input', renderTreemap);
+/* ---------- Reactividad filtros ---------- */
+document.getElementById('programaSel').addEventListener('change', renderTreemap);
+document.getElementById('gradoSel').addEventListener('change', renderTreemap);
+document.getElementById('minYear').addEventListener('input', renderTreemap);
+document.getElementById('maxYear').addEventListener('input', renderTreemap);
 el.programaFilter.addEventListener('input', () => {
   const q = normalize(el.programaFilter.value || "");
   const programas = uniq(state.cleaned.map(d=>d.PROGRAMA)).filter(v => v!=null);
   const filtered = q ? programas.filter(p => normalize(p).includes(q)) : programas;
   fillSelect(el.programaSel, filtered.sort((a,b)=>a.localeCompare(b)));
 });
-el.limpiar.addEventListener('click', () => {
-  el.programaFilter.value = "";
-  const programas = uniq(state.cleaned.map(d=>d.PROGRAMA)).sort((a,b)=>(a||"").localeCompare(b||""));
-  fillSelect(el.programaSel, programas);
-  const years = uniq(state.cleaned.map(d => d.GRADO)).sort((a,b)=>(a??0)-(b??0));
-  fillSelect(el.gradoSel, years);
-  el.minYear.value = ""; el.maxYear.value = "";
-  renderTreemap();
-});
 
-/* Auto-carga inicial */
+/* ---------- Auto-carga inicial ---------- */
 (async function init(){
-  const qs = new URL(location.href).searchParams.get("data");
-  const url = (qs || DEFAULT_XLSX_URL || "").trim();
-  if (url) {
-    el.xlsxUrl.value = url;
-    try {
-      const info = await loadFromUrl(url);
-      await bootstrapFromRows(info.rows, info.sheet, info.fileName);
-    } catch(e){ setStatus(`Error: ${e.message}`, true); }
-  } else {
-    setStatus("Ingresa una URL Raw o sube un archivo .xlsx.");
-  }
+  try{
+    // Se permite ?data=URL para despliegues, pero no se muestra UI para cambiarlo.
+    const qs = new URL(location.href).searchParams.get("data");
+    const url = (qs || DEFAULT_XLSX_URL).trim();
+    const info = await loadFromUrl(url);
+    await bootstrapFromRows(info.rows, info.sheet, info.fileName);
+  }catch(e){ setStatus(`Error: ${e.message}`, true); }
 })();
 </script>
 </body>
