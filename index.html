@@ -169,7 +169,7 @@ function detectColumns(rows){
   };
   const programa = find([/\bprograma\b/]);
   const grado    = find([/\bgrado\b/, /\baño.*grad/, /\baño.*egres/, /\baño\b/, /\byear\b/]);
-  const tema     = find([/\bTop1_Categoria\b/, /\btema\b/]);
+  const tema     = find([/\btop1_categoria\b/, /\btema(?:\s+de)?\s+trabajo\b/, /\btema\b/]);
   return { programa, grado, tema };
 }
 
@@ -329,7 +329,13 @@ function pickBestSheet(workbook){
     if (!json.length) return;
     const cols = Object.keys(json[0] ?? {});
     const nc = cols.map(c => normalize(c));
-    const hasTema = nc.some(c => (c.includes("tema") && c.includes("trabajo")) || c === "Top1_Categoria" || c === "temas de trabajo");
+
+    const hasTema = nc.some(c =>
+      c === "top1_categoria" ||
+      (c.includes("tema") && c.includes("trabajo")) ||
+      c === "tema de trabajo" || c === "temas de trabajo"
+    );
+
     const hasProg = nc.some(c => c.includes("programa"));
     const hasGrad = nc.some(c => c.includes("grado") || (c.includes("año") && (c.includes("grad") || c.includes("egres"))) || c === "year");
     const score = (hasTema?1:0) + (hasProg?1:0) + (hasGrad?1:0) + Math.min(cols.length,6)*0.05;
@@ -372,7 +378,7 @@ function loadFromFile(file){
 
 async function bootstrapFromRows(rows, sheet, fileName){
   const cols = detectColumns(rows);
-  if (!cols.tema) throw new Error("No encontré la columna 'Tema de trabajo'. Revisa encabezados.");
+  if (!cols.tema) throw new Error("No encontré la columna 'Top1_Categoria' (o 'Tema de trabajo'). Revisa encabezados.");
   state.cols = cols;
   state.cleaned = cleanRows(rows, cols);
   state.sheetName = sheet;
