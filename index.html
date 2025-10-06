@@ -17,13 +17,11 @@
   header { padding: 16px 20px; background: #111827; color: #fff; }
   h1 { font-size: 18px; margin: 0; }
   .sub { color:#cbd5e1; font-size:12px; margin-top:4px; }
-  .wrap { display:grid; grid-template-columns: 300px 1fr; gap:16px; padding:16px; }
+  .wrap { display:grid; grid-template-columns: 320px 1fr; gap:16px; padding:16px; }
   .panel { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; }
   label { display:block; font-weight:600; margin:10px 0 6px; }
-  select, button, input[type="text"] {
-    width:100%; padding:8px; border-radius:10px; border:1px solid #d1d5db; background:#fff;
-  }
-  .actions { display:flex; gap:8px; margin-top:10px; }
+  select, button, input[type="text"], input[type="file"] { width:100%; padding:8px; border-radius:10px; border:1px solid #d1d5db; background:#fff; }
+  .actions { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
   .legend { display:flex; flex-wrap: wrap; gap:6px; margin-top:10px; }
   .legend-item { display:flex; align-items:center; gap:6px; padding:2px 6px; border-radius:6px; background:#fff; border:1px solid var(--border); }
   .legend-swatch { width:12px; height:12px; border-radius:3px; }
@@ -39,16 +37,16 @@
 <body>
 <header>
   <h1>🌳 Treemap – Tema de trabajo</h1>
-  <div class="sub" id="fileMeta">Cargando Excel…</div>
+  <div class="sub" id="fileMeta">Carga un Excel por URL (Raw) o súbelo local.</div>
 </header>
 
 <div class="wrap">
   <aside class="panel">
-    <label>Fuente de datos (.xlsx)</label>
-    <input id="xlsxUrl" type="text" placeholder="URL del Excel (o usa ?data=...)" />
+    <label>Fuente de datos (.xlsx) vía URL (Raw GitHub u otro hosting con CORS)</label>
+    <input id="xlsxUrl" type="text" placeholder="https://raw.githubusercontent.com/…/Egresados%20FEIPU.xlsx" />
     <div class="actions">
-      <button id="btnLoad">Cargar</button>
-      <button id="btnDemo">Demo (misma URL)</button>
+      <button id="btnLoad">Cargar URL</button>
+      <input id="fileInput" type="file" accept=".xlsx" />
     </div>
     <div id="status" class="small muted" style="margin-top:6px;"></div>
 
@@ -59,14 +57,13 @@
     <label for="gradoSel">Filtrar por AÑO DE GRADO</label>
     <div class="row">
       <select id="gradoSel" multiple size="8" style="flex:1;"></select>
-      <div style="display:flex;flex-direction:column;gap:6px;width:120px;">
+      <div style="display:flex;flex-direction:column;gap:6px;width:140px;">
         <input id="minYear" type="text" placeholder="mín (e.g. 2015)" />
         <input id="maxYear" type="text" placeholder="máx (e.g. 2025)" />
       </div>
     </div>
 
     <div class="actions">
-      <button id="aplicar">Aplicar</button>
       <button id="limpiar">Limpiar</button>
     </div>
 
@@ -86,12 +83,10 @@
 
 <script>
 /* ============================ CONFIG ============================ */
-
-const XLSX_URL = "https://raw.githubusercontent.com/juancotes/egresados-FEIPU/main/Egresados%20FEIPU.xlsx";
+const DEFAULT_XLSX_URL = "https://raw.githubusercontent.com/juancotes/egresados-FEIPU/main/Egresados%20FEIPU.xlsx";
 /* =============================================================== */
 
 const state = {
-  rawRows: [],
   cleaned: [],
   cols: { programa: null, grado: null, tema: null },
   sheetName: null,
@@ -103,13 +98,12 @@ const el = {
   status: document.getElementById('status'),
   xlsxUrl: document.getElementById('xlsxUrl'),
   btnLoad: document.getElementById('btnLoad'),
-  btnDemo: document.getElementById('btnDemo'),
+  fileInput: document.getElementById('fileInput'),
   programaFilter: document.getElementById('programaFilter'),
   programaSel: document.getElementById('programaSel'),
   gradoSel: document.getElementById('gradoSel'),
   minYear: document.getElementById('minYear'),
   maxYear: document.getElementById('maxYear'),
-  aplicar: document.getElementById('aplicar'),
   limpiar: document.getElementById('limpiar'),
   chart: document.getElementById('chart'),
   legend: document.getElementById('legend'),
@@ -117,18 +111,15 @@ const el = {
   details: document.getElementById('details'),
 };
 
-function getParam(name){
-  const url = new URL(window.location.href);
-  return url.searchParams.get(name);
+function setStatus(msg, isErr=false){
+  el.status.textContent = msg;
+  el.status.className = "small " + (isErr ? "err" : "muted");
 }
 
-function normalize(s){
-  return String(s ?? "").trim().toLowerCase().replace(/\s+/g,' ');
-}
+function normalize(s){ return String(s ?? "").trim().toLowerCase().replace(/\s+/g,' '); }
 
 function extractYear(v){
   if (v == null || v === "") return null;
-  // Si ya es número razonable
   const n = Number(v);
   if (!Number.isNaN(n)) {
     const y = Math.round(n);
@@ -148,24 +139,17 @@ function extractYear(v){
   return null;
 }
 
-function pickBestSheet(workbook){
-  // Heurística: mayor puntaje por presencia de columnas objetivo
-  let best = { name:null, score:-1, cols:[] };
-  workbook.SheetNames.forEach(name => {
-    const ws = workbook.Sheets[name];
-    const json = XLSX.utils.sheet_to_json(ws, {defval: null});
-    if (!json.length) return;
-    const cols = Object.keys(json[0] ?? {});
-    const nc = cols.map(c => normalize(c));
-    const hasTema = nc.some(c => (c.includes("tema") && c.includes("trabajo")) || c === "tema de trabajo" || c === "temas de trabajo");
-    const hasProg = nc.some(c => c === "programa" || c.includes("programa"));
-    const hasGrad = nc.some(c => c.includes("grado") || (c.includes("año") && (c.includes("grad") || c.includes("egres"))) || c === "year");
-    const score = (hasTema?1:0) + (hasProg?1:0) + (hasGrad?1:0);
-    const lenBoost = Math.min(cols.length, 6)*0.05;
-    const s = score + lenBoost; // leve desempate por #cols
-    if (s > best.score) best = { name, score:s, cols };
-  });
-  return best.name || workbook.SheetNames[0];
+function normalizeGithubUrl(u){
+  try {
+    const url = new URL(u);
+    if (url.hostname === 'github.com' && url.pathname.includes('/blob/')) {
+      const parts = url.pathname.split('/').filter(Boolean);
+      const user  = parts[0], repo = parts[1], branch = parts[3];
+      const rest  = parts.slice(4).join('/');
+      return `https://raw.githubusercontent.com/${user}/${repo}/${branch}/${rest}`;
+    }
+    return u;
+  } catch { return u; }
 }
 
 function detectColumns(rows){
@@ -181,16 +165,14 @@ function detectColumns(rows){
     return null;
   };
   const programa = find([/\bprograma\b/]);
-  const grado = find([/\bgrado\b/, /\baño.*grad/, /\baño.*egres/, /\baño\b/, /\byear\b/]);
-  const tema = find([/\btema(?:\s+de)?\s+trabajo\b/, /\btema\b/]);
+  const grado    = find([/\bgrado\b/, /\baño.*grad/, /\baño.*egres/, /\baño\b/, /\byear\b/]);
+  const tema     = find([/\btema(?:\s+de)?\s+trabajo\b/, /\btema\b/]);
   return { programa, grado, tema };
 }
 
 function cleanRows(rows, cols){
   const out = [];
-  const canonMap = new Map(); // canonicaliza por normalización simple (espacios/case)
   const counts = new Map();
-  // Primera pasada: normalización leve para proponer forma canónica por frecuencia
   const tmp = rows.map(r => {
     const temaRaw = r[cols.tema];
     const temaStr = (temaRaw==null?"":String(temaRaw).trim());
@@ -199,27 +181,13 @@ function cleanRows(rows, cols){
     return { r, key, temaStr };
   });
   const key2canon = new Map();
-  for (const [key, cnt] of counts.entries()){
-    // el "canónico" será el primer valor observado más frecuente (aquí simplificado al primero)
-    key2canon.set(key, null);
-  }
-  for (const t of tmp){
-    if (t.key && key2canon.get(t.key) == null) key2canon.set(t.key, t.temaStr);
-  }
-  // Segunda pasada: construir filas limpias
+  for (const t of tmp){ if (t.key && !key2canon.has(t.key)) key2canon.set(t.key, t.temaStr); }
   for (const row of rows){
-    const prog = row[cols.programa];
-    const grad = row[cols.grado];
-    const tema = row[cols.tema];
-
-    const PROGRAMA = (prog==null || String(prog).trim()==="") ? null : String(prog).trim();
-    const GRADO = extractYear(grad);
-    const temaKey = normalize(tema);
-    const TEMA = (!temaKey ? null : key2canon.get(temaKey) || String(tema).trim());
-
-    if (TEMA) {
-      out.push({ PROGRAMA, GRADO, "Tema de trabajo": TEMA });
-    }
+    const PROGRAMA = (row[cols.programa]==null || String(row[cols.programa]).trim()==="") ? null : String(row[cols.programa]).trim();
+    const GRADO    = extractYear(row[cols.grado]);
+    const temaKey  = normalize(row[cols.tema]);
+    const TEMA     = (!temaKey ? null : key2canon.get(temaKey) || String(row[cols.tema]).trim());
+    if (TEMA) out.push({ PROGRAMA, GRADO, "Tema de trabajo": TEMA });
   }
   return out;
 }
@@ -236,86 +204,59 @@ function fillSelect(sel, options){
   }
 }
 
-function setStatus(msg, isErr=false){
-  el.status.textContent = msg;
-  el.status.className = "small " + (isErr ? "err" : "muted");
-}
-
-async function loadXlsx(url){
-  setStatus("Descargando Excel…");
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`No se pudo descargar el archivo (${res.status})`);
-  const ab = await res.arrayBuffer();
-  setStatus("Parseando Excel…");
-  const wb = XLSX.read(ab, { type: "array" });
-  const sheet = pickBestSheet(wb);
-  const ws = wb.Sheets[sheet];
-  const rows = XLSX.utils.sheet_to_json(ws, { defval: null });
-  return { wb, rows, sheet };
-}
-
 function buildFilters(){
   const programas = uniq(state.cleaned.map(d => d.PROGRAMA)).sort((a,b)=>(a||"").localeCompare(b||""));
-  const years = uniq(state.cleaned.map(d => d.GRADO)).sort((a,b)=>(a??0)-(b??0));
+  const years     = uniq(state.cleaned.map(d => d.GRADO)).sort((a,b)=>(a??0)-(b??0));
   fillSelect(el.programaSel, programas);
   fillSelect(el.gradoSel, years);
-  // Sugerir rango min/max
-  if (years.length){
-    el.minYear.value = years[0];
-    el.maxYear.value = years[years.length-1];
-  } else {
-    el.minYear.value = "";
-    el.maxYear.value = "";
-  }
+  // NO imponemos rango si está vacío
+  el.minYear.value = years.length ? years[0] : "";
+  el.maxYear.value = years.length ? years[years.length-1] : "";
 }
 
-function drawLegend(categories, color){
-  const sel = d3.select(el.legend).selectAll(".legend-item").data(categories, d=>d);
-  const enter = sel.enter().append("div").attr("class","legend-item");
-  enter.append("div").attr("class","legend-swatch").style("background", d => color(d));
-  enter.append("div").text(d => d);
-  sel.exit().remove();
-}
-
-function getSelected(sel){
-  return Array.from(sel.selectedOptions).map(o => o.value);
-}
+function getSelected(sel){ return Array.from(sel.selectedOptions).map(o => o.value); }
 
 function applyFilters(){
-  const selProg = getSelected(el.programaSel);
-  const selGrad = getSelected(el.gradoSel).map(v => Number(v));
-  const minY = Number(el.minYear.value) || -Infinity;
-  const maxY = Number(el.maxYear.value) || Infinity;
+  const selProg = getSelected(el.programaSel);                 // strings
+  const selGrad = getSelected(el.gradoSel).map(v => Number(v)); // números
+  const minY    = Number(el.minYear.value);
+  const maxY    = Number(el.maxYear.value);
+  const useRange = Number.isFinite(minY) || Number.isFinite(maxY); // solo si escribiste algo
 
   return state.cleaned.filter(d => {
     const okProg = selProg.length ? selProg.includes(d.PROGRAMA) : true;
     const okGradList = selGrad.length ? selGrad.includes(d.GRADO) : true;
-    const okRange = (d.GRADO==null) ? false : (d.GRADO >= minY && d.GRADO <= maxY);
+    const okRange = useRange
+      ? (d.GRADO!=null && (!Number.isFinite(minY) || d.GRADO>=minY) && (!Number.isFinite(maxY) || d.GRADO<=maxY))
+      : true;
     return okProg && okGradList && okRange;
   });
 }
 
 function aggregateByTema(data){
   const m = new Map();
-  for (const r of data){
-    const k = r["Tema de trabajo"] || "—";
-    m.set(k, (m.get(k)||0) + 1);
-  }
-  const out = Array.from(m.entries()).map(([name, value]) => ({ name, value }));
-  out.sort((a,b)=> b.value - a.value);
-  return out;
+  for (const r of data){ m.set(r["Tema de trabajo"] || "—", (m.get(r["Tema de trabajo"] || "—")||0)+1); }
+  return Array.from(m, ([name,value]) => ({name,value})).sort((a,b)=>b.value-a.value);
+}
+
+function drawLegend(categories, color){
+  const sel = d3.select(el.legend).selectAll(".legend-item").data(categories, d=>d);
+  sel.exit().remove();
+  const enter = sel.enter().append("div").attr("class","legend-item");
+  enter.append("div").attr("class","legend-swatch").style("background", d => color(d));
+  enter.append("div").text(d => d);
 }
 
 function renderTreemap(){
-  const data = applyFilters();
+  const data  = applyFilters();
   const total = data.length;
-  const agg = aggregateByTema(data);
+  const agg   = aggregateByTema(data);
   const color = d3.scaleOrdinal(d3.schemeTableau10).domain(agg.map(d=>d.name));
 
   drawLegend(agg.map(d=>d.name), color);
 
   el.chart.innerHTML = "";
-  const width = el.chart.clientWidth;
+  const width  = el.chart.clientWidth;
   const height = el.chart.clientHeight;
 
   const root = d3.hierarchy({ name:"root", children: agg })
@@ -331,18 +272,12 @@ function renderTreemap(){
   const g = svg.selectAll("g")
     .data(root.leaves())
     .join("g")
-    .attr("transform", d => `translate(${d.x0},${d.y0})`);
-
-  g.append("rect")
-    .attr("width", d => Math.max(0, d.x1 - d.x0))
-    .attr("height", d => Math.max(0, d.y1 - d.y0))
-    .attr("fill", d => color(d.data.name))
-    .attr("rx",6).attr("ry",6)
+    .attr("transform", d => `translate(${d.x0},${d.y0})`)
     .on("mousemove", (ev, d) => {
       const pct = total ? ((d.data.value/total)*100).toFixed(1) : 0;
       el.tooltip.style.opacity = 1;
       el.tooltip.style.left = (ev.clientX+12)+"px";
-      el.tooltip.style.top = (ev.clientY-12)+"px";
+      el.tooltip.style.top  = (ev.clientY-12)+"px";
       el.tooltip.innerHTML = `<b>${d.data.name}</b><br>Conteo: ${d.data.value}<br>% del total: ${pct}%`;
     })
     .on("mouseleave", () => el.tooltip.style.opacity = 0)
@@ -355,21 +290,20 @@ function renderTreemap(){
       `;
     });
 
-  // Etiquetas si hay espacio suficiente
+  g.append("rect")
+    .attr("width", d => Math.max(0, d.x1 - d.x0))
+    .attr("height", d => Math.max(0, d.y1 - d.y0))
+    .attr("fill", d => color(d.data.name))
+    .attr("rx",6).attr("ry",6);
+
   g.append("foreignObject")
     .attr("width", d => Math.max(0, d.x1 - d.x0))
     .attr("height", d => Math.max(0, d.y1 - d.y0))
     .append("xhtml:div")
-    .style("width","100%")
-    .style("height","100%")
-    .style("display","flex")
-    .style("align-items","center")
-    .style("justify-content","center")
-    .style("text-align","center")
-    .style("padding","4px")
-    .style("font-size","12px")
-    .style("font-weight","600")
-    .style("color","#111827")
+    .style("width","100%").style("height","100%")
+    .style("display","flex").style("align-items","center").style("justify-content","center")
+    .style("text-align","center").style("padding","4px")
+    .style("font-size","12px").style("font-weight","600").style("color","#111827")
     .style("pointer-events","none")
     .html(d => {
       const area = (d.x1 - d.x0) * (d.y1 - d.y0);
@@ -378,84 +312,122 @@ function renderTreemap(){
     });
 }
 
-function refreshProgramaList(){
+/* ---------- Carga de datos ---------- */
+function pickBestSheet(workbook){
+  let best = { name:null, score:-1 };
+  workbook.SheetNames.forEach(name => {
+    const ws = workbook.Sheets[name];
+    const json = XLSX.utils.sheet_to_json(ws, {defval: null});
+    if (!json.length) return;
+    const cols = Object.keys(json[0] ?? {});
+    const nc = cols.map(c => normalize(c));
+    const hasTema = nc.some(c => (c.includes("tema") && c.includes("trabajo")) || c === "tema de trabajo" || c === "temas de trabajo");
+    const hasProg = nc.some(c => c.includes("programa"));
+    const hasGrad = nc.some(c => c.includes("grado") || (c.includes("año") && (c.includes("grad") || c.includes("egres"))) || c === "year");
+    const score = (hasTema?1:0) + (hasProg?1:0) + (hasGrad?1:0) + Math.min(cols.length,6)*0.05;
+    if (score > best.score) best = { name, score };
+  });
+  return best.name || workbook.SheetNames[0];
+}
+
+async function loadFromUrl(url){
+  url = normalizeGithubUrl(url);
+  setStatus("Descargando Excel…");
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`No se pudo descargar el archivo (${res.status})`);
+  const ab = await res.arrayBuffer();
+  setStatus("Parseando Excel…");
+  const wb = XLSX.read(ab, { type: "array" });
+  const sheet = pickBestSheet(wb);
+  const ws = wb.Sheets[sheet];
+  const rows = XLSX.utils.sheet_to_json(ws, { defval: null });
+  return { rows, sheet, fileName: url.split("/").pop() };
+}
+
+function loadFromFile(file){
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => {
+      try {
+        const data = new Uint8Array(fr.result);
+        const wb = XLSX.read(data, { type: "array" });
+        const sheet = pickBestSheet(wb);
+        const ws = wb.Sheets[sheet];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: null });
+        resolve({ rows, sheet, fileName: file.name });
+      } catch(e){ reject(e); }
+    };
+    fr.onerror = () => reject(fr.error);
+    fr.readAsArrayBuffer(file);
+  });
+}
+
+async function bootstrapFromRows(rows, sheet, fileName){
+  const cols = detectColumns(rows);
+  if (!cols.tema) throw new Error("No encontré la columna 'Tema de trabajo'. Revisa encabezados.");
+  state.cols = cols;
+  state.cleaned = cleanRows(rows, cols);
+  state.sheetName = sheet;
+  state.fileName = fileName;
+  el.fileMeta.textContent = `${fileName || 'archivo.xlsx'} · hoja: ${sheet}`;
+  setStatus(`Registros válidos: ${state.cleaned.length}`);
+  buildFilters();
+  renderTreemap();
+}
+
+/* ---------- Eventos UI ---------- */
+document.getElementById('btnLoad').addEventListener('click', async () => {
+  try {
+    const url = (el.xlsxUrl.value || DEFAULT_XLSX_URL || "").trim();
+    if (!url) { setStatus("Ingresa una URL .xlsx válida (Raw).", true); return; }
+    const info = await loadFromUrl(url);
+    await bootstrapFromRows(info.rows, info.sheet, info.fileName);
+  } catch(err){ console.error(err); setStatus(`Error: ${err.message}`, true); }
+});
+
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+  const file = e.target.files?.[0]; if (!file) return;
+  try {
+    const info = await loadFromFile(file);
+    await bootstrapFromRows(info.rows, info.sheet, info.fileName);
+  } catch(err){ console.error(err); setStatus(`Error: ${err.message}`, true); }
+});
+
+/* Reactividad: re-render automático al cambiar filtros */
+el.programaSel.addEventListener('change', renderTreemap);
+el.gradoSel.addEventListener('change', renderTreemap);
+el.minYear.addEventListener('input', renderTreemap);
+el.maxYear.addEventListener('input', renderTreemap);
+el.programaFilter.addEventListener('input', () => {
   const q = normalize(el.programaFilter.value || "");
   const programas = uniq(state.cleaned.map(d=>d.PROGRAMA)).filter(v => v!=null);
   const filtered = q ? programas.filter(p => normalize(p).includes(q)) : programas;
   fillSelect(el.programaSel, filtered.sort((a,b)=>a.localeCompare(b)));
-}
-
-async function bootstrap(){
-  // Determina URL
-  const param = getParam("data");
-  const url = param || XLSX_URL;
-  el.xlsxUrl.value = url || "";
-  if (!url) {
-    setStatus("Proporciona la URL del Excel (o ?data=URL).");
-    return;
-  }
-  try{
-    const { rows, sheet } = await loadXlsx(url);
-    state.fileName = url.split("/").pop();
-    state.sheetName = sheet;
-    el.fileMeta.textContent = `${state.fileName || 'archivo.xlsx'} · hoja: ${state.sheetName}`;
-
-    const cols = detectColumns(rows);
-    if (!cols.tema) throw new Error("No encontré la columna 'Tema de trabajo' (intenta renombrar o revisar encabezados).");
-    if (!cols.programa) setStatus("Advertencia: no encontré 'PROGRAMA' (el filtro se desactiva).", true);
-    if (!cols.grado) setStatus("Advertencia: no encontré 'GRADO' (el filtro por año se desactiva).", true);
-
-    state.cols = cols;
-    state.rawRows = rows;
-    state.cleaned = cleanRows(rows, cols);
-
-    setStatus(`Registros válidos: ${state.cleaned.length}`);
-
-    buildFilters();
-    renderTreemap();
-  } catch(err){
-    console.error(err);
-    setStatus(`Error: ${err.message}`, true);
-  }
-}
-
-/* === Eventos === */
-el.btnLoad.addEventListener('click', async () => {
-  const url = el.xlsxUrl.value.trim();
-  if (!url) { setStatus("Ingresa una URL .xlsx válida.", true); return; }
-  const qs = new URL(window.location.href);
-  qs.searchParams.set("data", url);
-  history.replaceState(null, "", qs.toString());
-  bootstrap();
 });
-
-el.btnDemo.addEventListener('click', () => {
-  // Recarga con la misma URL textfield (útil en GitHub Pages)
-  const url = el.xlsxUrl.value.trim() || XLSX_URL;
-  if (!url) { setStatus("Ingresa una URL .xlsx válida.", true); return; }
-  const qs = new URL(window.location.href);
-  qs.searchParams.set("data", url);
-  history.replaceState(null, "", qs.toString());
-  bootstrap();
-});
-
-el.aplicar.addEventListener('click', renderTreemap);
 el.limpiar.addEventListener('click', () => {
   el.programaFilter.value = "";
-  refreshProgramaList();
-  Array.from(el.programaSel.options).forEach(o => o.selected=false);
-  Array.from(el.gradoSel.options).forEach(o => o.selected=false);
-  const years = uniq(state.cleaned.map(d => d.GRADO)).sort((a,b)=> (a??0)-(b??0));
-  el.minYear.value = years.length ? years[0] : "";
-  el.maxYear.value = years.length ? years[years.length-1] : "";
+  const programas = uniq(state.cleaned.map(d=>d.PROGRAMA)).sort((a,b)=>(a||"").localeCompare(b||""));
+  fillSelect(el.programaSel, programas);
+  const years = uniq(state.cleaned.map(d => d.GRADO)).sort((a,b)=>(a??0)-(b??0));
+  fillSelect(el.gradoSel, years);
+  el.minYear.value = ""; el.maxYear.value = "";
   renderTreemap();
 });
 
-el.programaFilter.addEventListener('input', refreshProgramaList);
-window.addEventListener('resize', renderTreemap);
-
-/* Arranca */
-bootstrap();
+/* Auto-carga inicial */
+(async function init(){
+  const qs = new URL(location.href).searchParams.get("data");
+  const url = (qs || DEFAULT_XLSX_URL || "").trim();
+  if (url) {
+    el.xlsxUrl.value = url;
+    try {
+      const info = await loadFromUrl(url);
+      await bootstrapFromRows(info.rows, info.sheet, info.fileName);
+    } catch(e){ setStatus(`Error: ${e.message}`, true); }
+  } else {
+    setStatus("Ingresa una URL Raw o sube un archivo .xlsx.");
+  }
+})();
 </script>
 </body>
 </html>
